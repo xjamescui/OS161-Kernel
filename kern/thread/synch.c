@@ -213,7 +213,7 @@ lock_acquire(struct lock *lock)
 
   // Write this
 
-  if (lock_do_i_hold(lock) == true) {
+  if (lock_do_i_hold(lock) == false) {
     spinlock_acquire(&lock->lk_spinlock);
     wchan_lock(lock->lk_wchan);
     lock->lk_hold = true;
@@ -253,7 +253,6 @@ lock_do_i_hold(struct lock *lock)
   // end write this
 
   //(void)lock;  // suppress warning until code gets written
-
   //return true; // dummy until code gets written
 }
 
