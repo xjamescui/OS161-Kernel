@@ -72,10 +72,15 @@ void V(struct semaphore *);
  * The name field is for easier debugging. A copy of the name is
  * (should be) made internally.
  */
+
+ // Stuff was added here for ASST1.
 struct lock {
-        char *lk_name;
-        // add what you need here
-        // (don't forget to mark things volatile as needed)
+
+  // (don't forget to mark things volatile as needed)
+  char            *lk_name;
+  struct wchan    *lk_wchan;
+  struct spinlock  lk_spinlock;
+  volatile bool    lk_hold;
 };
 
 struct lock *lock_create(const char *name);
@@ -111,10 +116,14 @@ void lock_destroy(struct lock *);
  * (should be) made internally.
  */
 
+// Stuff was added here for ASST1
 struct cv {
-        char *cv_name;
-        // add what you need here
-        // (don't forget to mark things volatile as needed)
+
+  // add what you need here
+
+  char              *cv_name;
+  struct wchan      *cv_wchan;
+  struct spinlock    cv_spinlock;
 };
 
 struct cv *cv_create(const char *name);
