@@ -213,7 +213,7 @@ lock_acquire(struct lock *lock)
 
   // Write this
 
-  if (lock_do_i_hold(lock) == false) {
+  while (!lock->lk_hold) {
     spinlock_acquire(&lock->lk_spinlock);
     wchan_lock(lock->lk_wchan);
     lock->lk_hold = true;
@@ -230,7 +230,8 @@ lock_release(struct lock *lock)
 
   // Write this
 
-  if (lock_do_i_hold(lock) == true) {
+  if (lock->lk_hold != false) {
+
     lock->lk_hold = false;
     wchan_unlock(lock->lk_wchan);
     spinlock_release(&lock->lk_spinlock);
@@ -279,20 +280,22 @@ cv_create(const char *name)
 
         // add stuff here as needed
 
-        /*cv->cv_wchan = wchan_create("CV wchan");
+        cv->cv_wchan = wchan_create("CV wchan");
         if (cv->cv_wchan == NULL) {
+
           kfree(cv->cv_name);
           kfree(cv);
           return NULL;
         }
 
-        spinlock_init(&cv->cv_spinlock);*/
+        spinlock_init(&cv->cv_spinlock);
 
         // end add stuff
 
         return cv;
 }
 
+// Stuff got added here for ASST1
 void
 cv_destroy(struct cv *cv)
 {
@@ -300,7 +303,10 @@ cv_destroy(struct cv *cv)
 
         // add stuff here as needed
 
-        //end add stuff
+        spinlock_cleanup(&cv->cv_spinlock);
+        wchan_destroy(cv->cv_wchan);
+
+        // end add stuff
 
         kfree(cv->cv_name);
         kfree(cv);
@@ -313,13 +319,17 @@ cv_wait(struct cv *cv, struct lock *lock)
 
   // Write this
 
-  /*lock_release(lock);
-  wchan_sleep(cv->cv_wchan); // wchan_sleep is a blocking call.
-  lock_acquire(lock);*/
+  spinlock_acquire(&cv->cv_spinlock);
+  wchan_lock(cv->cv_wchan);
+  spinlock_release(&cv->cv_spinlock);
+  lock_release(lock);
+  wchan_sleep(cv->cv_wchan);
+  lock_acquire(lock);
 
   // end write this
-  (void)cv;    // suppress warning until code gets written
-  (void)lock;  // suppress warning until code gets written
+
+  //(void)cv;    // suppress warning until code gets written
+  //(void)lock;  // suppress warning until code gets written
 }
 
 void
@@ -328,19 +338,47 @@ cv_signal(struct cv *cv, struct lock *lock)
 
   // Write this
 
-  //if (lock_do_i_hold(lock))
-  //  lock_aquire(lock);
+  spinlock_acquire(&cv->cv_spinlock);
+  wchan_lock(cv->cv_wchan);
+  spinlock_release(&cv->cv_spinlock);
+  lock_release(lock);
 
+  if (!wchan_isempty(cv->cv_wchan)) {
+    wchan_wakeone(cv->cv_wchan);
+  }
+
+  wchan_unlock(cv->cv_wchan);
 
   //end write this
-  (void)cv;    // suppress warning until code gets written
-  (void)lock;  // suppress warning until code gets written
+
+  //(void)cv;    // suppress warning until code gets written
+  //(void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+
+  // Write this
+
+  // Commented code saved here for prosterity.
+  // Demonstrates my intrepid stupidity and
+  // my need to solve problems with
+  // long drawn and elongated technique.
+  // I am but a stupid spin lock and I go gaga
+  // over the mechanics of the seven year war.
+  /*spinlock_acquire(&cv->cv_spinlock);
+  wchan_lock(cv->cv_wchan);
+  spinlock_release(&cv->cv_spinlock);*/
+
+  lock_release(lock);
+
+  wchan_wakeall(cv->cv_wchan);
+
+  //wchan_unlock(cv->cv_wchan);
+
+  // end write this
+
+  //(void)cv;    // suppress warning until code gets written
+  //(void)lock;  // suppress warning until code gets written
 }
