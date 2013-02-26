@@ -157,35 +157,37 @@ struct lock *
 lock_create(const char *name)
 {
 
-  struct lock *b_lock; // b_lock for BASIC_lock
+  struct lock *lock;
 
-  b_lock = kmalloc(sizeof(struct lock));
-  if (b_lock == NULL) {
+  lock = kmalloc(sizeof(struct lock));
+  if (lock == NULL) {
     return NULL;
   }
 
-  b_lock->lk_name = kstrdup(name);
-  if (b_lock->lk_name == NULL) {
-    kfree(b_lock);
+  lock->lk_name = kstrdup(name);
+  if (lock->lk_name == NULL) {
+    kfree(lock);
     return NULL;
   }
 
   // add stuff here as needed
 
-  b_lock->lk_wchan = wchan_create("Lock");
-  if (b_lock->lk_wchan == NULL) {
-    kfree (b_lock->lk_name);
-    kfree (b_lock);
+  lock->lk_wchan = wchan_create("Lock");
+  if (lock->lk_wchan == NULL) {
+    kfree (lock->lk_name);
+    kfree (lock);
     return NULL;
   }
 
-  spinlock_init(&b_lock->lk_spinlock);
+  spinlock_init(&lock->lk_spinlock);
 
-  b_lock->lk_hold = false;
+  lock->lk_hold = false;
+
+  lock->lk_curthread = NULL;
 
   // end add stuff.
 
-  return b_lock;
+  return lock;
 }
 
 // Stuff got added here for ASST1.
@@ -202,7 +204,6 @@ lock_destroy(struct lock *lock)
 
   // end add stuff
 
-
   kfree(lock->lk_name);
   kfree(lock);
 }
@@ -213,11 +214,21 @@ lock_acquire(struct lock *lock)
 
   // Write this
 
-  while (!lock->lk_hold) {
-    spinlock_acquire(&lock->lk_spinlock);
+  spinlock_acquire(&lock->lk_spinlock);
+
+  while (lock->lk_hold) {
+
     wchan_lock(lock->lk_wchan);
-    lock->lk_hold = true;
+    spinlock_release(&lock->lk_spinlock);
+    wchan_sleep(lock->lk_wchan);
+    spinlock_acquire(&lock->lk_spinlock);
   }
+
+  lock->lk_hold = true;
+
+  lock->lk_curthread = curthread;
+
+  spinlock_release(&lock->lk_spinlock);
 
   // end write this
 
@@ -230,12 +241,10 @@ lock_release(struct lock *lock)
 
   // Write this
 
-  if (lock->lk_hold != false) {
-
-    lock->lk_hold = false;
-    wchan_unlock(lock->lk_wchan);
-    spinlock_release(&lock->lk_spinlock);
-  }
+  spinlock_acquire(&lock->lk_spinlock);
+  lock->lk_curthread = NULL;
+  lock->lk_hold = false;
+  spinlock_release(&lock->lk_spinlock);
 
   // end write this
 
@@ -248,8 +257,10 @@ lock_do_i_hold(struct lock *lock)
 
   // Write this
 
-  if (lock->lk_hold) return true;
-  else return false;
+  if (curthread == lock->lk_curthread)
+    return true;
+  else
+    return false;
 
   // end write this
 
