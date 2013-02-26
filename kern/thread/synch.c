@@ -181,9 +181,9 @@ lock_create(const char *name)
 
   spinlock_init(&lock->lk_spinlock);
 
-  lock->lk_hold = false;
-
   lock->lk_curthread = NULL;
+
+  lock->lk_hold = 0;
 
   // end add stuff.
 
@@ -216,7 +216,7 @@ lock_acquire(struct lock *lock)
 
   spinlock_acquire(&lock->lk_spinlock);
 
-  while (lock->lk_hold) {
+  while (lock->lk_hold && !lock_do_i_hold(lock)) {
 
     wchan_lock(lock->lk_wchan);
     spinlock_release(&lock->lk_spinlock);
@@ -224,7 +224,7 @@ lock_acquire(struct lock *lock)
     spinlock_acquire(&lock->lk_spinlock);
   }
 
-  lock->lk_hold = true;
+  lock->lk_hold = 1;
 
   lock->lk_curthread = curthread;
 
@@ -243,7 +243,7 @@ lock_release(struct lock *lock)
 
   spinlock_acquire(&lock->lk_spinlock);
   lock->lk_curthread = NULL;
-  lock->lk_hold = false;
+  lock->lk_hold = 0;
   spinlock_release(&lock->lk_spinlock);
 
   // end write this
@@ -291,7 +291,7 @@ cv_create(const char *name)
 
         // add stuff here as needed
 
-        cv->cv_wchan = wchan_create("CV wchan");
+        /*cv->cv_wchan = wchan_create("CV wchan");
         if (cv->cv_wchan == NULL) {
 
           kfree(cv->cv_name);
@@ -299,7 +299,7 @@ cv_create(const char *name)
           return NULL;
         }
 
-        spinlock_init(&cv->cv_spinlock);
+        spinlock_init(&cv->cv_spinlock);*/
 
         // end add stuff
 
@@ -310,17 +310,18 @@ cv_create(const char *name)
 void
 cv_destroy(struct cv *cv)
 {
-        KASSERT(cv != NULL);
 
-        // add stuff here as needed
+  KASSERT(cv != NULL);
 
-        spinlock_cleanup(&cv->cv_spinlock);
-        wchan_destroy(cv->cv_wchan);
+  // add stuff here as needed
 
-        // end add stuff
+  /*spinlock_cleanup(&cv->cv_spinlock);
+  wchan_destroy(cv->cv_wchan);*/
 
-        kfree(cv->cv_name);
-        kfree(cv);
+  // end add stuff
+
+  kfree(cv->cv_name);
+  kfree(cv);
 }
 
 // Stuff got added here for ASST1
@@ -330,17 +331,17 @@ cv_wait(struct cv *cv, struct lock *lock)
 
   // Write this
 
-  spinlock_acquire(&cv->cv_spinlock);
+  /*spinlock_acquire(&cv->cv_spinlock);
   wchan_lock(cv->cv_wchan);
   spinlock_release(&cv->cv_spinlock);
   lock_release(lock);
   wchan_sleep(cv->cv_wchan);
-  lock_acquire(lock);
+  lock_acquire(lock);*/
 
   // end write this
 
-  //(void)cv;    // suppress warning until code gets written
-  //(void)lock;  // suppress warning until code gets written
+  (void)cv;    // suppress warning until code gets written
+  (void)lock;  // suppress warning until code gets written
 }
 
 void
@@ -349,7 +350,7 @@ cv_signal(struct cv *cv, struct lock *lock)
 
   // Write this
 
-  spinlock_acquire(&cv->cv_spinlock);
+  /*spinlock_acquire(&cv->cv_spinlock);
   wchan_lock(cv->cv_wchan);
   spinlock_release(&cv->cv_spinlock);
   lock_release(lock);
@@ -358,12 +359,12 @@ cv_signal(struct cv *cv, struct lock *lock)
     wchan_wakeone(cv->cv_wchan);
   }
 
-  wchan_unlock(cv->cv_wchan);
+  wchan_unlock(cv->cv_wchan);*/
 
   //end write this
 
-  //(void)cv;    // suppress warning until code gets written
-  //(void)lock;  // suppress warning until code gets written
+  (void)cv;    // suppress warning until code gets written
+  (void)lock;  // suppress warning until code gets written
 }
 
 void
@@ -382,14 +383,14 @@ cv_broadcast(struct cv *cv, struct lock *lock)
   wchan_lock(cv->cv_wchan);
   spinlock_release(&cv->cv_spinlock);*/
 
-  lock_release(lock);
+  /*lock_release(lock);
 
-  wchan_wakeall(cv->cv_wchan);
+  wchan_wakeall(cv->cv_wchan);*/
 
   //wchan_unlock(cv->cv_wchan);
 
   // end write this
 
-  //(void)cv;    // suppress warning until code gets written
-  //(void)lock;  // suppress warning until code gets written
+  (void)cv;    // suppress warning until code gets written
+  (void)lock;  // suppress warning until code gets written
 }

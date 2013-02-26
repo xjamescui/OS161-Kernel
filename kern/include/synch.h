@@ -81,8 +81,7 @@ struct lock {
   struct wchan *lk_wchan;
   struct spinlock lk_spinlock;
   volatile struct thread *lk_curthread;
-  //register struct thread *curthread asm("$23");>
-  volatile bool lk_hold;
+  volatile int lk_hold;
 };
 
 struct lock *lock_create(const char *name);
