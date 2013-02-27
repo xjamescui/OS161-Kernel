@@ -182,7 +182,6 @@ lock_create(const char *name)
   spinlock_init(&lock->lk_spinlock);
 
   lock->lk_curthread = NULL;
-
   lock->lk_hold = 0;
 
   // end add stuff.
@@ -199,8 +198,12 @@ lock_destroy(struct lock *lock)
 
   // add stuff here as needed
 
-  spinlock_cleanup(&lock->lk_spinlock);
-  wchan_destroy(lock->lk_wchan);
+  if (lock->lk_hold == 0) {
+    spinlock_cleanup(&lock->lk_spinlock);
+    wchan_destroy(lock->lk_wchan);
+  }
+  else
+    panic ("Lock destory called when being held.\n");
 
   // end add stuff
 
@@ -242,12 +245,20 @@ lock_release(struct lock *lock)
 
   KASSERT(lock != NULL);
 
+  // Not technically needed as the other 
+  // threads sleep on the wchan when the 
+  // lock is being held.
+  spinlock_acquire(&lock->lk_spinlock);
+
   if (lock->lk_curthread == curthread) {
-    spinlock_acquire(&lock->lk_spinlock);
     lock->lk_curthread = NULL;
     lock->lk_hold = 0;
     spinlock_release(&lock->lk_spinlock);
   }
+  else
+    panic ("Bad thread trying to release lock. Bad code.\n");
+
+  spinlock_release(&lock->lk_spinlock);
 
   // end write this
 
