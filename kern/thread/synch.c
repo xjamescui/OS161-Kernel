@@ -231,9 +231,11 @@ lock_release(struct lock *lock)
 
         KASSERT(lock != NULL);
 
-        spinlock_acquire(&lock->lk_spinlock);
+        //spinlock_acquire(&lock->lk_spinlock);
 
         if (lock_do_i_hold(lock)) {
+
+          spinlock_acquire(&lock->lk_spinlock);
           lock->lk_curthread = NULL;
           lock->lk_hold = 0;
           // Two days of struggle and me not
@@ -242,11 +244,10 @@ lock_release(struct lock *lock)
           // someone up randomly. This is there
           // in the wchan include file.
           wchan_wakeone(lock->lk_wchan);
+          spinlock_release(&lock->lk_spinlock);
         }
-        else
-          panic("Rouge thread trying to release lock. Bad code, bad");
-
-        spinlock_release(&lock->lk_spinlock);
+        //else
+        //  panic("Rouge thread trying to release lock. Bad code, bad\n");
 
         //end
 
@@ -290,9 +291,21 @@ cv_create(const char *name)
                 kfree(cv);
                 return NULL;
         }
-        
+
         // add stuff here as needed
-        
+
+        cv->cv_wchan = wchan_create("CV wchan");
+        if (cv->cv_wchan == NULL) {
+
+          kfree(cv->cv_name);
+          kfree(cv);
+          return NULL;
+         }
+
+         spinlock_init(&cv->cv_spinlock);
+
+        // end add stuff
+
         return cv;
 }
 
@@ -302,7 +315,12 @@ cv_destroy(struct cv *cv)
         KASSERT(cv != NULL);
 
         // add stuff here as needed
-        
+
+        spinlock_cleanup(&cv->cv_spinlock);
+        wchan_destroy(cv->cv_wchan);
+
+        // end add stuff
+
         kfree(cv->cv_name);
         kfree(cv);
 }
@@ -310,23 +328,72 @@ cv_destroy(struct cv *cv)
 void
 cv_wait(struct cv *cv, struct lock *lock)
 {
-        // Write this
-        (void)cv;    // suppress warning until code gets written
-        (void)lock;  // suppress warning until code gets written
+
+  // Write this
+
+  KASSERT(curthread->t_in_interrupt == false);
+
+  if (lock_do_i_hold(lock)) {
+
+    lock_release(lock);
+
+    spinlock_acquire(&cv->cv_spinlock);
+    wchan_lock(cv->cv_wchan);
+    spinlock_release(&cv->cv_spinlock);
+
+    wchan_sleep(cv->cv_wchan);
+    lock_acquire(lock);
+
+  }
+
+  // end write this
+
+  // (void)cv;    // suppress warning until code gets written
+  // (void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_signal(struct cv *cv, struct lock *lock)
 {
-        // Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+
+  // Write this
+
+  KASSERT(curthread->t_in_interrupt == false);
+
+  if (lock_do_i_hold(lock)) {
+
+    spinlock_acquire(&cv->cv_spinlock);
+    wchan_wakeone(cv->cv_wchan);
+    spinlock_release(&cv->cv_spinlock);
+  }
+
+  // end write this
+
+  //(void)cv;    // suppress warning until code gets written
+  //(void)lock;  // suppress warning until code gets written
 }
 
 void
 cv_broadcast(struct cv *cv, struct lock *lock)
 {
-	// Write this
-	(void)cv;    // suppress warning until code gets written
-	(void)lock;  // suppress warning until code gets written
+
+  // Write this
+
+  KASSERT(curthread->t_in_interrupt == false);
+
+  if (lock_do_i_hold(lock)) {
+
+    spinlock_acquire(&cv->cv_spinlock);
+
+    lock_release(lock);
+
+    wchan_wakeall(cv->cv_wchan);
+
+    spinlock_release(&cv->cv_spinlock);
+  }
+
+  // end write this
+
+  //(void)cv;    // suppress warning until code gets written
+  //(void)lock;  // suppress warning until code gets written
 }
