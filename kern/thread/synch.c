@@ -333,21 +333,27 @@ cv_wait(struct cv *cv, struct lock *lock)
 
   // Write this
 
+  int spinlock_flag = 0;
+
   KASSERT(curthread->t_in_interrupt == false);
 
-  if (lock_do_i_hold(lock)) {
+  spinlock_acquire(&cv->cv_spinlock);
 
-    spinlock_acquire(&cv->cv_spinlock);
+  if (lock_do_i_hold(lock)) {
 
     lock_release(lock);
 
     wchan_lock(cv->cv_wchan);
+    spinlock_flag = 1;
     spinlock_release(&cv->cv_spinlock);
 
     wchan_sleep(cv->cv_wchan);
     lock_acquire(lock);
 
   }
+
+  if (!spinlock_flag)
+    spinlock_release(&cv->cv_spinlock);
 
   // end write this
 
@@ -361,14 +367,22 @@ cv_signal(struct cv *cv, struct lock *lock)
 
   // Write this
 
+  int spinlock_flag = 0;
+
   KASSERT(curthread->t_in_interrupt == false);
+
+  spinlock_acquire(&cv->cv_spinlock);
 
   if (lock_do_i_hold(lock)) {
 
     spinlock_acquire(&cv->cv_spinlock);
     wchan_wakeone(cv->cv_wchan);
+    spinlock_flag = 1;
     spinlock_release(&cv->cv_spinlock);
   }
+
+  if (!spinlock_flag)
+    spinlock_release(&cv->cv_spinlock);
 
   // end write this
 
@@ -382,16 +396,23 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 
   // Write this
 
+  int spinlock_flag = 0;
+
   KASSERT(curthread->t_in_interrupt == false);
+
+  spinlock_acquire(&cv->cv_spinlock);
 
   if (lock_do_i_hold(lock)) {
 
-    spinlock_acquire(&cv->cv_spinlock);
-
     wchan_wakeall(cv->cv_wchan);
+
+    spinlock_flag = 1;
 
     spinlock_release(&cv->cv_spinlock);
   }
+
+  if (!spinlock_flag)
+    spinlock_release(&cv->cv_spinlock);
 
   // end write this
 
