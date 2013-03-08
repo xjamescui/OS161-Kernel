@@ -425,7 +425,7 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 // RW Locks
 //
 
-struct rwlock * rwlock_create(const char *name) {
+/*struct rwlock * rwlock_create(const char *name) {
 
   struct rwlock *rwlock;
 
@@ -455,6 +455,7 @@ struct rwlock * rwlock_create(const char *name) {
   if (rwlock->rwl_rsem == NULL || rwlock->rwl_wsem == NULL) {
     kfree (rwlock->rwl_name);
     kfree (rwlock);
+  }
 
   return rwlock;
 }
@@ -514,16 +515,21 @@ void rwlock_read_release(struct rwlock * rwlock) {
   // If the rwlock is not acquired at all
   // do nothing.
   if (mode == -1) {
-    continue;
+    //continue;
   }
 
   // Writer has the lock
   if (mode == 0) {
     // continue for now. Add metric to prevent
     // starvation.
-    continue;
+    //continue;
   }
 }
 
 void rwlock_acquire_write(struct rwlock *rwlock) {
-}
+
+  (void) rwlock;
+
+  return;
+
+}*/
