@@ -425,7 +425,7 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 // RW Locks
 //
 
-/*struct rwlock * rwlock_create(const char *name) {
+struct rwlock * rwlock_create(const char *name) {
 
   struct rwlock *rwlock;
 
@@ -456,7 +456,6 @@ cv_broadcast(struct cv *cv, struct lock *lock)
     kfree (rwlock->rwl_name);
     kfree (rwlock);
   }
-
   return rwlock;
 }
 
@@ -506,24 +505,36 @@ void rwlock_read_release(struct rwlock * rwlock) {
   spinlock_acquire(&rwlock->rwl_spinlock);
 
   // Reader has the lock. Simply decrease count.
-  if (mode == 1) {
+  if (mode == 1 && ratio > 0.5) {
     P(rwlock->rwl_rsem);
     if (rwlock->rwl_rsem->sem_count == 0)
       rwlock->mode = -1;
+    ratio = rwlock->rwl_rsem->count / rwlock->rwl_wsem->count;
+    spinlock_release(&rwlock->rwl_spinlock);
+    return;
   }
 
   // If the rwlock is not acquired at all
-  // do nothing.
+  // acquire it and incereasr the count.
   if (mode == -1) {
-    //continue;
+    mode = 1;
+    V(rw->rwl_rsem);
+    spinlock_release(&rwlock->rwl_spinlock);
+    return;
   }
 
-  // Writer has the lock
-  if (mode == 0) {
-    // continue for now. Add metric to prevent
-    // starvation.
-    //continue;
+  // Writer has the lock. Do stuff to prevent
+  // starvation.
+  while (mode == 0 && ratio <= 0.5) {
+
+    spinlock_release(&rwl->rwl_spinlock);
+    wchan_sleep(rwlock->rwl_wchan);
+    spinlock_acquire(&rwl->rwl_spinlock);
   }
+
+  return;
+
+  spinlock_release(&rwlock->rwl_spinlock);
 }
 
 void rwlock_acquire_write(struct rwlock *rwlock) {
@@ -531,5 +542,4 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
   (void) rwlock;
 
   return;
-
-}*/
+}
