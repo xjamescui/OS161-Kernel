@@ -419,3 +419,111 @@ cv_broadcast(struct cv *cv, struct lock *lock)
   //(void)cv;    // suppress warning until code gets written
   //(void)lock;  // suppress warning until code gets written
 }
+
+
+/////////////////////////////////////////////////////
+// RW Locks
+//
+
+struct rwlock * rwlock_create(const char *name) {
+
+  struct rwlock *rwlock;
+
+  rwlock = kmalloc(sizeof(struct rwlock));
+  if (rwlock == NULL) return NULL;
+
+  rwlock->rwl_name = kstrdup(name);
+  if (rwlock->rwl_name == NULL) {
+    kfree(lock);
+    return NULL;
+  }
+
+  rwlock->rwl_rwchan = wchan_create("RWLock Reader Wait Channel");
+  rwlock->rwl_wwchan = wchan_create("RWLock Writer Wait Channel");
+  if (rwlock->rwl_rwchan == NULL || rwlock->rwl_rwchan == NULL) {
+    kfree (rwlock->rwl_name);
+    kfree (rwlock);
+    return NULL;
+  }
+
+  spinlock_init(&rwlock->rwl_spinlock);
+
+  mode = -1;
+
+  sem_create(rwlock->rwl_rsem);
+  sem_create(rwlock->rwl_wsem);
+  if (rwlock->rwl_rsem == NULL || rwlock->rwl_wsem == NULL) {
+    kfree (rwlock->rwl_name);
+    kfree (rwlock);
+
+  return rwlock;
+}
+
+void rwlock_destory(struct rwlock *rwlock) {
+
+  KASSERT(rwlock != NULL);
+
+  spinlock_cleanup (&rwlock->rwl_spinlock);
+  wchan_destroy (rwlock->rwl_rwchan);
+  wchan_destroy (rwlock->rwl_wwchan);
+  sem_destory (rwlock->rsem);
+  sem_destory (rwlock->wsem);
+  kfree (rwlock->rwl_name);
+  kfree (rwlock);
+}
+
+void rwlock_acquire_read(struct rwlock *rwlock) {
+
+  KASSERT(rwlock != NULL)
+
+  spinlock_acquire (&rwlock->rwl_spinlock);
+
+  while (1) {
+
+    // Reader has the lock. So NP!
+    if (mode == 1 || mode = -1) {
+      V(rwlock->rwl_rsem);
+      mode = 1;
+      break;
+    }
+    // Writer has a lock. We sleep and wait.
+    else if (mode == 0) {
+      wchan_lock(rwlock->rwl_rwchan);
+      spinlock_release(&rwlock->rwl_spinlock);
+      wchan_sleep(rwlock->rwl_rwchan);
+      spinlock_acquire(&rwlock->rwl_spinlock);
+    }
+  }
+
+  spinlock_release (&rwlock->rwl_spinlock);
+}
+
+void rwlock_read_release(struct rwlock * rwlock) {
+
+  KASSERT(rwlock != NULL);
+
+  spinlock_acquire(&rwlock->rwl_spinlock);
+
+  // Reader has the lock. Simply decrease count.
+  if (mode == 1) {
+    P(rwlock->rwl_rsem);
+    if (rwlock->rwl_rsem->sem_count == 0)
+      rwlock->mode = -1;
+  }
+
+  // If the rwlock is not acquired at all
+  // do nothing.
+  if (mode == -1) {
+    continue;
+  }
+
+  // Writer has the lock
+  if (mode == 0) {
+    // continue for now. Add metric to prevent
+    // starvation.
+    continue;
+  }
+}
+
+void rwlock_acquire_write(struct rwlock *rwlock) {
+}
