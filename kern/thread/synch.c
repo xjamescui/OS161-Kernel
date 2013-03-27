@@ -352,6 +352,7 @@ cv_wait(struct cv *cv, struct lock *lock)
 
   }
 
+  // If you don't hold the lock
   if (!spinlock_flag)
     spinlock_release(&cv->cv_spinlock);
 
@@ -425,7 +426,7 @@ cv_broadcast(struct cv *cv, struct lock *lock)
 // RW Locks
 //
 
-struct rwlock * rwlock_create(const char *name) {
+/*struct rwlock * rwlock_create(const char *name) {
 
   struct rwlock *rwlock;
 
@@ -476,65 +477,12 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 
   KASSERT(rwlock != NULL)
 
-  spinlock_acquire (&rwlock->rwl_spinlock);
-
-  while (1) {
-
-    // Reader has the lock. So NP!
-    if (mode == 1 || mode = -1) {
-      V(rwlock->rwl_rsem);
-      mode = 1;
-      break;
-    }
-    // Writer has a lock. We sleep and wait.
-    else if (mode == 0) {
-      wchan_lock(rwlock->rwl_rwchan);
-      spinlock_release(&rwlock->rwl_spinlock);
-      wchan_sleep(rwlock->rwl_rwchan);
-      spinlock_acquire(&rwlock->rwl_spinlock);
-    }
-  }
-
-  spinlock_release (&rwlock->rwl_spinlock);
 }
 
 void rwlock_read_release(struct rwlock * rwlock) {
 
   KASSERT(rwlock != NULL);
 
-  spinlock_acquire(&rwlock->rwl_spinlock);
-
-  // Reader has the lock. Simply decrease count.
-  if (mode == 1 && ratio > 0.5) {
-    P(rwlock->rwl_rsem);
-    if (rwlock->rwl_rsem->sem_count == 0)
-      rwlock->mode = -1;
-    ratio = rwlock->rwl_rsem->count / rwlock->rwl_wsem->count;
-    spinlock_release(&rwlock->rwl_spinlock);
-    return;
-  }
-
-  // If the rwlock is not acquired at all
-  // acquire it and incereasr the count.
-  if (mode == -1) {
-    mode = 1;
-    V(rw->rwl_rsem);
-    spinlock_release(&rwlock->rwl_spinlock);
-    return;
-  }
-
-  // Writer has the lock. Do stuff to prevent
-  // starvation.
-  while (mode == 0 && ratio <= 0.5) {
-
-    spinlock_release(&rwl->rwl_spinlock);
-    wchan_sleep(rwlock->rwl_wchan);
-    spinlock_acquire(&rwl->rwl_spinlock);
-  }
-
-  return;
-
-  spinlock_release(&rwlock->rwl_spinlock);
 }
 
 void rwlock_acquire_write(struct rwlock *rwlock) {
@@ -542,4 +490,4 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
   (void) rwlock;
 
   return;
-}
+}*/

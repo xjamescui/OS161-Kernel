@@ -47,7 +47,18 @@
 // functions will allow you to do local initialization. They are called at
 // the top of the corresponding driver code.
 
+// Male start, female start. Male end, Female end.
+// Much better than the quantum hanky-panky I had to present with the 
+// bacteria.
+struct semaphore *ms, *fs, *me, *fe;
+
 void whalemating_init() {
+
+  ms = sem_create("Male Start", 0);
+  fs = sem_create("Female Start", 0);
+  me = sem_create("Male End", 0);
+  fe = sem_create("Female End", 0);
+
   return;
 }
 
@@ -55,6 +66,12 @@ void whalemating_init() {
 // care if your problems leak memory, but if you do, use this to clean up.
 
 void whalemating_cleanup() {
+
+  sem_destroy(ms);
+  sem_destroy(fs);
+  sem_destroy(me);
+  sem_destroy(fe);
+
   return;
 }
 
@@ -65,7 +82,11 @@ male(void *p, unsigned long which)
   (void)which;
   
   male_start();
-	// Implement this function 
+
+	// Implement this function
+  V(ms);
+  P(me);
+
   male_end();
 
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
@@ -81,7 +102,11 @@ female(void *p, unsigned long which)
   (void)which;
   
   female_start();
+
 	// Implement this function 
+  V(fs);
+  P(fe);
+
   female_end();
   
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
@@ -97,7 +122,13 @@ matchmaker(void *p, unsigned long which)
   (void)which;
   
   matchmaker_start();
+
 	// Implement this function 
+  P(ms);
+  P(fs);
+  V(me);
+  V(fe);
+
   matchmaker_end();
   
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
@@ -137,6 +168,8 @@ matchmaker(void *p, unsigned long which)
 // functions will allow you to do local initialization. They are called at
 // the top of the corresponding driver code.
 
+// All Car's should drive on the left, unless you're a lefty and the config
+// makes sense.
 void stoplight_init() {
   return;
 }

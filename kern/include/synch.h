@@ -160,7 +160,6 @@ struct rwlock {
   int                mode;
   struct semaphore  *rwl_rsem;
   struct semaphone  *rwl_wsem;
-  int mode;
 };
 
 struct rwlock * rwlock_create(const char *);
