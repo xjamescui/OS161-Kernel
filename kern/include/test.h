@@ -73,6 +73,10 @@ void turnright(void *, unsigned long);
 void stoplight_init(void);
 void stoplight_cleanup(void);
 
+// Helper Function
+struct semaphore * toSem(long);
+
+
 /*
  * Test code.
  */

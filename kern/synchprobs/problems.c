@@ -168,9 +168,21 @@ matchmaker(void *p, unsigned long which)
 // functions will allow you to do local initialization. They are called at
 // the top of the corresponding driver code.
 
-// All Car's should drive on the left, unless you're a lefty and the config
-// makes sense.
+// Cars should drive on the left, unless you're a lefty and the config
+// makes sense. :P
+
+struct semaphore *zero, *one, *two, *three;
+struct lock *flow_lock;
+
 void stoplight_init() {
+
+  zero = sem_create("Zero", 1);
+  one = sem_create("One", 1);
+  two = sem_create("Two", 1);
+  three = sem_create("Three", 1);
+
+  flow_lock = lock_create("Stoplight Flow Lock");
+
   return;
 }
 
@@ -178,14 +190,80 @@ void stoplight_init() {
 // care if your problems leak memory, but if you do, use this to clean up.
 
 void stoplight_cleanup() {
+
+  sem_destroy(zero);
+  sem_destroy(one);
+  sem_destroy(two);
+  sem_destroy(three);
+
+  lock_destroy(flow_lock);
+
   return;
+}
+
+struct semaphore * toSem(long num) {
+
+  switch(num) {
+    case 0:
+      return zero;
+    case 1:
+      return one;
+    case 2:
+      return two;
+    case 3:
+      return three;
+  }
+
+  // End of non-viod function
+  return zero;
 }
 
 void
 gostraight(void *p, unsigned long direction)
 {
+
+  long opr, prev; 
 	struct semaphore * stoplightMenuSemaphore = (struct semaphore *)p;
-  (void)direction;
+
+  // Direction Change: X, X + 3, X + 2
+
+  opr = 0;
+
+  if (!opr) {
+    // X
+    lock_acquire(flow_lock);
+    opr++;
+    P(toSem(direction));
+    inQuadrant(direction);
+    prev = direction;
+    direction = (direction + 3) % 4;
+  //  lock_release(flow_lock);
+  }
+
+  while (opr < 3) {
+//    lock_acquire(flow_lock);
+    opr++;
+    P(toSem(direction)); 
+    inQuadrant(direction);
+    V(toSem(prev));
+    prev = direction;
+
+    if (opr == 2) {
+      // X + 3
+      direction = (direction + 3) % 4;
+    }
+     
+    if (opr == 3) {
+      // X + 2
+      direction = (direction + 2) % 4;
+    }
+
+    //lock_release(flow_lock);
+  }
+
+  lock_release(flow_lock);
+
+  leaveIntersection();
   
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
   // stoplight driver can return to the menu cleanly.
@@ -197,7 +275,46 @@ void
 turnleft(void *p, unsigned long direction)
 {
 	struct semaphore * stoplightMenuSemaphore = (struct semaphore *)p;
-  (void)direction;
+  
+  long opr, prev;
+
+  // Direction Change: X, X + 3, X + 2, X + 1
+
+  opr = 0;
+
+  if (!opr) {
+    lock_acquire(flow_lock);
+    opr++;
+    P(toSem(direction));
+    inQuadrant(direction);
+    prev = direction;
+    direction = (direction + 3) % 4;
+//    lock_release(flow_lock);
+  }
+
+  while (opr < 4) {
+    // Put a lock here.
+  //  lock_acquire(flow_lock);
+    opr++;
+    P(toSem(direction));
+    inQuadrant(direction);
+    V(toSem(prev));
+    prev = direction;
+
+    if (opr == 2) {
+      direction = (direction + 2) % 4;
+    }
+
+    if (opr == 3) {
+      direction = (direction + 1) % 4;
+    }
+
+  //  lock_release(flow_lock);
+  }
+
+  lock_release(flow_lock);
+
+  leaveIntersection();
   
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
   // stoplight driver can return to the menu cleanly.
@@ -209,7 +326,23 @@ void
 turnright(void *p, unsigned long direction)
 {
 	struct semaphore * stoplightMenuSemaphore = (struct semaphore *)p;
-  (void)direction;
+
+  long prev;
+
+  lock_acquire(flow_lock);
+  P(toSem(direction));
+  inQuadrant(direction);
+  prev = direction;
+  direction = (direction + 3) % 4;
+//  lock_release(flow_lock);
+  
+//  lock_acquire(flow_lock);
+  P(toSem(direction));
+  inQuadrant(direction);
+  V(toSem(prev));
+  lock_release(flow_lock);
+  
+  leaveIntersection();
 
   // 08 Feb 2012 : GWA : Please do not change this code. This is so that your
   // stoplight driver can return to the menu cleanly.
