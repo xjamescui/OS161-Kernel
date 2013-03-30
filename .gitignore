@@ -11,4 +11,4 @@ build
 *.swo
 .vimrc
 kern/thread/or
-.patch
+*.patch
