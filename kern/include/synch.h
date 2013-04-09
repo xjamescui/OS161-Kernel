@@ -154,12 +154,17 @@ void cv_broadcast(struct cv *cv, struct lock *lock);
 struct rwlock {
 
   char              *rwl_name;
-  struct spinlock    rwl_spinlock;
-  struct wchan      *rwl_rwchan;
-  struct wchan      *rwl_wwchan;
-  int                mode;
-  struct semaphore  *rwl_rsem;
-  struct semaphone  *rwl_wsem;
+ // struct spinlock    rwl_spinlock;
+//  struct wchan      *rwl_rwchan;
+ // struct wchan      *rwl_wwchan;
+ // int                mode;
+  
+  struct semaphore  *waiting_sem;
+  struct semaphone  *access_sem;
+  struct semaphore  *countersem;
+  int no_of_readers;
+  int previous;
+  int current;
 };
 
 struct rwlock * rwlock_create(const char *);
