@@ -48,6 +48,9 @@
 #include <mainbus.h>
 #include <vnode.h>
 
+// File sys_calls
+#include <file.h>
+
 #include "opt-synchprobs.h"
 #include "opt-defaultscheduler.h"
 
@@ -118,6 +121,12 @@ struct thread *
 thread_create(const char *name)
 {
 	struct thread *thread;
+  int i;
+
+  // File Descriptor Table. Save OFT here too. Move it (OFT) later. You'd have
+  // to store it with execv and fork when creating a new process to keep track
+  // of the open files associated with a process.
+
 
 	DEBUGASSERT(name != NULL);
 
@@ -153,6 +162,10 @@ thread_create(const char *name)
 	thread->t_cwd = NULL;
 
 	/* If you add to struct thread, be sure to initialize here */
+
+  // Clear the table!
+  for (i = 0; i < OPEN_MAX; i++)
+      thread->file_desctable[i] = NULL;
 
 	return thread;
 }

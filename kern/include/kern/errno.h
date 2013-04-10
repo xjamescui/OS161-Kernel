@@ -107,5 +107,7 @@
 #define EMSGSIZE        63     /* Message too large */
 #define ENOTSUP         64     /* Threads operation not supported */
 
+// New errnos
+#define ENOFD           65
 
 #endif /* _KERN_ERRNO_H_ */
