@@ -435,7 +435,7 @@ struct rwlock * rwlock_create(const char *name) {
 
   rwlock->rwl_name = kstrdup(name);
   if (rwlock->rwl_name == NULL) {
-    kfree(lock);
+    kfree(rwlock);
     return NULL;
   }
 
@@ -454,8 +454,7 @@ rwlock->access_sem=sem_create("access",1);
     kfree (rwlock);
     return NULL;
   }*/
-
- rwlock->counter_sem=sem_create("counter semaphore",1);
+rwlock->counter_sem=sem_create("counter_semaphore",1);
 /*if (rwlock->counter_sem == NULL) {
     kfree (rwlock->counter_sem);
     kfree (rwlock);
@@ -470,18 +469,19 @@ rwlock->no_of_readers=0;
 
 void rwlock_destory(struct rwlock *rwlock) {
 
-  KASSERT(rwlock != NULL);
+//  KASSERT(rwlock != NULL);
 
   sem_destory(rwlock->waiting_sem);
   sem_destory(rwlock->access_sem);
   sem_destroy(rwlock->counter_sem);
   kfree (rwlock->rwl_name);
   kfree (rwlock);
+	return; ////// 
 }
 
 void rwlock_acquire_read(struct rwlock *rwlock) {
 
-  KASSERT(rwlock != NULL)
+ // KASSERT(rwlock != NULL)
  // int previous;
  // int current;
   P(rwlock->waiting_sem);
@@ -497,11 +497,11 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 
 }
 
-void rwlock_read_release(struct rwlock * rwlock) {
+void rwlock_release_read(struct rwlock * rwlock) {
 
-  KASSERT(rwlock != NULL);
+//  KASSERT(rwlock != NULL);
   P(rwlock->counter_sem);
-  rwlock->no_of_readers=rwlock->no_readers-1;
+  rwlock->no_of_readers=rwlock->no_of_readers-1;
   rwlock->current=rwlock->no_of_readers;
   V(rwlock->counter_Sem);
   if(rwlock->current==0)
