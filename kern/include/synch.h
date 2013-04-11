@@ -160,7 +160,7 @@ struct rwlock {
  // int                mode;
   
   struct semaphore  *waiting_sem;
-  struct semaphone  *access_sem;
+  struct semaphore  *access_sem;
   struct semaphore  *counter_sem;
   int no_of_readers;
   int previous;

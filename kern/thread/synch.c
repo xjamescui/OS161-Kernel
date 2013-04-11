@@ -467,12 +467,12 @@ rwlock->no_of_readers=0;
   return rwlock;
 }
 
-void rwlock_destory(struct rwlock *rwlock) {
+void rwlock_destroy(struct rwlock *rwlock) {
 
 //  KASSERT(rwlock != NULL);
 
-  sem_destory(rwlock->waiting_sem);
-  sem_destory(rwlock->access_sem);
+  sem_destroy(rwlock->waiting_sem);
+  sem_destroy(rwlock->access_sem);
   sem_destroy(rwlock->counter_sem);
   kfree (rwlock->rwl_name);
   kfree (rwlock);
@@ -493,7 +493,7 @@ void rwlock_acquire_read(struct rwlock *rwlock) {
 {
   P(rwlock->access_sem);
 }
-  V(rwlock->waiting_Sem);
+  V(rwlock->waiting_sem);
 
 }
 
@@ -503,7 +503,7 @@ void rwlock_release_read(struct rwlock * rwlock) {
   P(rwlock->counter_sem);
   rwlock->no_of_readers=rwlock->no_of_readers-1;
   rwlock->current=rwlock->no_of_readers;
-  V(rwlock->counter_Sem);
+  V(rwlock->counter_sem);
   if(rwlock->current==0)
 {
 V(rwlock->access_sem);
@@ -519,7 +519,7 @@ void rwlock_acquire_write(struct rwlock *rwlock) {
   return;
 
 }
-void rwlock_release__write(struct rwlock *rwlock)
+void rwlock_release_write(struct rwlock *rwlock)
 {
   V(rwlock->access_sem);
 }
