@@ -49,7 +49,7 @@ void enter_forked_process(struct trapframe *tf);
 
 /* Enter user mode. Does not return. */
 void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
-		       vaddr_t entrypoint);
+                        vaddr_t entrypoint);
 
 
 /*
@@ -60,10 +60,11 @@ int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 
 // File system calls
-int sys_open(const char *filename, int flags, int mode);
+int sys_open(const char *filename, int flags, int mode, int32_t *retval);
 int sys_close(int fd);
-int sys_read(int fd, void *buf, size_t buflen);
-int sys_write(int fd, const void *buf, size_t nbytes);  
-
+int sys_read(int fd, void *buf, size_t buflen, int32_t *retval);
+int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
+int sys_dup2(int oldfd, int newfd);
+int sys_chdir(const char *pathname);
 
 #endif /* _SYSCALL_H_ */

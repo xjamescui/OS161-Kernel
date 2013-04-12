@@ -7,6 +7,7 @@
 #define _FILE_H_
 
 #include <limits.h>
+#include <types.h>
 
 struct File {
   char name[NAME_MAX];
@@ -17,8 +18,11 @@ struct File {
   struct vnode* vn;
 };
 
-int sys_open(const char *filename, int flags, int mode);
-//int sys_close(int fd);
-//int write(int fd, const void *buf, size_t nbytes>);
+int sys_open(const char *filename, int flags, int mode, int32_t *retval);
+int sys_close(int fd);
+int sys_read(int fd, void *buf, size_t buflen, int32_t *retval);
+int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
+int sys_dup2(int oldfd, int newfd);
+int sys_chdir(const char *pathname);
 
 #endif
