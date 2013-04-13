@@ -136,6 +136,14 @@ syscall(struct trapframe *tf)
         err = sys_chdir((const char *)tf->tf_a0);
         break;
 
+      case SYS___getcwd:
+        err = sys__getcwd((char *)tf->tf_a0, tf->tf_a1);
+        break;
+
+      case SYS_lseek:
+        // pack stuff.
+        break;
+
       /* End add stuff */
  
 	    default:

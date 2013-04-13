@@ -136,7 +136,6 @@ int sys_close(int fd) {
 
   struct File *temp_file;
   int errno;
-  int temp_ref_count;
 
   if (fd < 0 && fd > OPEN_MAX) {
     errno = EBADF;
@@ -149,17 +148,14 @@ int sys_close(int fd) {
     return -1;
   }
 
-  temp_ref_count = curthread->file_desctable[fd]->ref_count;
-  if (temp_ref_count == 1) {
+  if(curthread->file_desctable[fd]->ref_count == 1) {
     VOP_CLOSE(curthread->file_desctable[fd]->vn);
-    temp_ref_count = 0;
     temp_file = curthread->file_desctable[fd];
     curthread->file_desctable[fd] = NULL;
     kfree(temp_file);
   }
   else {
-    temp_ref_count--;
-    curthread->file_desctable[fd]->ref_count = temp_ref_count;
+    curthread->file_desctable[fd]->ref_count--;
   }
 
   return 0;
@@ -167,7 +163,6 @@ int sys_close(int fd) {
 
 int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
 
-  // flags should be: O_RDONLY for stdin options should be 0664
   struct uio *read_uio;
   struct iovec *read_iovec;
   char *k_buf;
@@ -197,9 +192,13 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
 
   k_buf = kmalloc(sizeof(buflen) * sizeof(char));
 
-  uio_kinit(read_iovec, read_uio, k_buf, buflen, 0, UIO_READ);
+  uio_kinit(read_iovec, read_uio, k_buf, buflen, curthread->file_desctable[fd]->offset, UIO_READ);
 
-  *retval = VOP_READ(curthread->file_desctable[fd]->vn, read_uio);
+  //*retval = VOP_READ(curthread->file_desctable[fd]->vn, read_uio);
+  if(VOP_READ(curthread->file_desctable[fd]->vn, read_uio))
+    return -1;
+
+  *retval = buflen - read_uio->uio_resid;
 
   curthread->file_desctable[fd]->offset += *retval;
 
@@ -248,9 +247,13 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
 
   write_iovec = kmalloc(sizeof(struct iovec));
 
-  uio_kinit(write_iovec, write_uio, k_buf, nbytes, 0, UIO_WRITE);
+  // offset was zero before.
+  uio_kinit(write_iovec, write_uio, k_buf, nbytes, curthread->file_desctable[fd]->offset, UIO_WRITE);
 
-  *retval = VOP_WRITE(curthread->file_desctable[fd]->vn, write_uio);
+  if(VOP_WRITE(curthread->file_desctable[fd]->vn, write_uio))
+    return -1;
+
+  *retval = nbytes - write_uio->uio_resid;
 
   curthread->file_desctable[fd]->offset += *retval;
 
@@ -312,11 +315,36 @@ int sys_chdir(const char *pathname) {
   return 0;
 }
 
+int sys__getcwd(char *buf, size_t buflen) {
+
+  char *k_buf;
+  int errno;
+  struct uio *getcwd_uio;
+  struct iovec *getcwd_iovec;
+
+  if (buf == NULL) {
+    errno = EFAULT;
+    return -1;
+  }
+
+  k_buf = (char *) kmalloc(buflen * sizeof(char));
+
+  getcwd_iovec = kmalloc(sizeof(struct iovec));
+
+  getcwd_uio = kmalloc(sizeof(struct uio));
+
+  uio_kinit(getcwd_iovec, getcwd_uio, k_buf, buflen, 0, UIO_READ);
+
+  if(vfs_getcwd(getcwd_uio))
+    return -1;
+
+  copyout(k_buf, (void *)buf, sizeof(buflen));
+
+  return 0;
+}
+
+// TODO Get this done soon. You're late.
 // You need VOP_STAT for lseek. VOP_TRYSEEK
 /*off_t sys_lseek(int fd, off_t pos, int whence) {
 
-}*/
-
-// vfs_getcwd
-/*int sys__getcwd(char *buf, size_t buflen) {
 }*/
