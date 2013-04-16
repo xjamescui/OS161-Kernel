@@ -66,6 +66,7 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval);
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
 int sys_dup2(int oldfd, int newfd);
 int sys_chdir(const char *pathname);
- int sys__getcwd(char *buf, size_t buflen);
+int sys__getcwd(char *buf, size_t buflen);
+off_t sys_lseek(int fd, off_t pos, int whence, off_t *retval);
 
 #endif /* _SYSCALL_H_ */

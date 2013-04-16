@@ -23,6 +23,10 @@
 #include <kern/fcntl.h>
 #include <../../user/include/errno.h>
 #include <uio.h>
+// hahaha
+//#include <kern/include/kern/stat.h>
+#include <kern/stat.h>
+#include <kern/seek.h>
 
 #include <file.h>
 
@@ -41,6 +45,7 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
   int fd, result, temp;
   int errno;
   size_t length;
+  // struct stat file_stat - not neede for this assignment
 
   // Check if it works without this.
   fd = -1;
@@ -65,7 +70,6 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
       errno = ENOMEM;
       return -1;
     }
-
     copyinstr((const_userptr_t)filename, k_filename, PATH_MAX, &length);
   }
 
@@ -167,12 +171,10 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
   struct iovec *read_iovec;
   char *k_buf;
   int errno;
+  struct stat file_stat;
+  //size_t length;
 
-  // The buf checks are handles by the UIO_READ.
-  // if (buflen != sizeof(buf))
-  //  print "yeah right"
-
-  if (fd < 0 && fd > OPEN_MAX) {
+  if (fd < 0 || fd > OPEN_MAX) {
     errno = EBADF;
     return -1;
   }
@@ -187,25 +189,42 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
     return -1;
   }
 
+  // Check for valid flags
+  if (curthread->file_desctable[fd]->flags == O_WRONLY) {
+    errno = EBADF;
+    return -1;
+  }
+
   read_uio = kmalloc(sizeof(struct uio));
   read_iovec = kmalloc(sizeof(struct iovec));
 
-  k_buf = kmalloc(sizeof(buflen) * sizeof(char));
+  k_buf = kmalloc(buflen * sizeof(char));
+
+  k_buf = "TEST.";
 
   uio_kinit(read_iovec, read_uio, k_buf, buflen, curthread->file_desctable[fd]->offset, UIO_READ);
 
-  //*retval = VOP_READ(curthread->file_desctable[fd]->vn, read_uio);
   if(VOP_READ(curthread->file_desctable[fd]->vn, read_uio))
     return -1;
 
   *retval = buflen - read_uio->uio_resid;
 
-  curthread->file_desctable[fd]->offset += *retval;
+  //curthread->file_desctable[fd]->offset += *retval;
+  curthread->file_desctable[fd]->offset = read_uio->uio_offset;
+
+  if(VOP_STAT(curthread->file_desctable[fd]->vn, &file_stat))
+    return -1;
+
+  if (curthread->file_desctable[fd]->offset == file_stat.st_size)
+    *retval = 0;
 
   if (fd == 0)
     sys_close(fd);
 
-  copyout(k_buf, buf, sizeof(buflen));
+  if(copyout(k_buf, buf, buflen))
+    return -1;
+  //if(copyoutstr(k_buf, buf, buflen, &length))
+  //  return -1;
 
   kfree(k_buf);
   kfree(read_uio);
@@ -222,7 +241,7 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
   size_t length;
   int errno;
 
-  if (fd < 0 && fd > OPEN_MAX) {
+  if (fd < 0 || fd > OPEN_MAX) {
     errno = EBADF;
     return -1;
   }
@@ -239,7 +258,12 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
     return -1;
   }
 
-  k_buf = kmalloc(sizeof(nbytes) * sizeof(char));
+  if (curthread->file_desctable[fd]->flags == O_RDONLY) {
+    errno = EBADF;
+    return -1;
+  }
+
+  k_buf = kmalloc(nbytes * sizeof(char));
 
   copyinstr((const_userptr_t)buf, k_buf, nbytes, &length);
 
@@ -255,7 +279,7 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
 
   *retval = nbytes - write_uio->uio_resid;
 
-  curthread->file_desctable[fd]->offset += *retval;
+  curthread->file_desctable[fd]->offset = write_uio->uio_offset;
 
   if (fd == 1 || fd == 2)
     sys_close(fd);
@@ -343,8 +367,48 @@ int sys__getcwd(char *buf, size_t buflen) {
   return 0;
 }
 
-// TODO Get this done soon. You're late.
-// You need VOP_STAT for lseek. VOP_TRYSEEK
-/*off_t sys_lseek(int fd, off_t pos, int whence) {
+// I'm late, I'm late, I'm late!
+off_t sys_lseek(int fd, off_t pos, int whence, off_t *retval) {
 
-}*/
+  int errno;
+  off_t new_offset;
+  struct stat file_stat;
+
+  if (fd < 0 || fd > OPEN_MAX) {
+    errno = EBADF;
+    return -1;
+  }
+
+  if(VOP_STAT(curthread->file_desctable[fd]->vn, &file_stat))
+    return -1;
+
+  if (whence == SEEK_SET)
+    new_offset = pos;
+
+  else if (whence == SEEK_CUR || whence) {
+    new_offset = curthread->file_desctable[fd]->offset + pos;
+  }
+  else if (whence == SEEK_END) {
+    new_offset = file_stat.st_size + pos;
+  }
+  else {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (new_offset < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (VOP_TRYSEEK(curthread->file_desctable[fd]->vn, new_offset)) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  curthread->file_desctable[fd]->offset = new_offset;
+
+  *retval = new_offset;
+
+  return 0;
+}

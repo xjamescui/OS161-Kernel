@@ -37,7 +37,7 @@
 #include <syscall.h>
 
 #include <file.h>
-
+#include <copyinout.h>
 
 /*
  * System call dispatcher.
@@ -82,7 +82,8 @@ syscall(struct trapframe *tf)
 {
 	int callno;
 	int32_t retval;
-	int err;
+	int err, whence;
+  off_t pos, ret;
 
 	KASSERT(curthread != NULL);
 	KASSERT(curthread->t_curspl == 0);
@@ -141,7 +142,22 @@ syscall(struct trapframe *tf)
         break;
 
       case SYS_lseek:
-        // pack stuff.
+        pos = 0;
+        pos |= tf->tf_a2;
+        pos <<= 32;
+        pos |= tf->tf_a3;
+
+        if (copyin((void *)(tf->tf_sp + 16), (userptr_t *)&whence, sizeof(int)))
+          err = 1;
+
+        err = sys_lseek(tf->tf_a0, pos, whence, &ret);
+
+        if (!err) {
+          // Get the high 32 bits.
+          retval = ret >> 32;
+          // Get the low 32 bits. Remember how a union works.
+          tf->tf_v1 = ret;
+        }
         break;
 
       /* End add stuff */

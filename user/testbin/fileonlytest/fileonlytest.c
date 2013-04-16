@@ -137,7 +137,7 @@ main(int argc, char **argv)
     }
 		len = read(fh, readbuf, sizeof(readbuf));
 		if (len != sizeof(readbuf)) {
-			err(1, "read failed");
+			err(1, "read failed, len:%d", len);
 		}
 		for (j = BUFFER_SIZE - 1; j >= 0; j--) {
 			if (readbuf[j] != i * j) {
