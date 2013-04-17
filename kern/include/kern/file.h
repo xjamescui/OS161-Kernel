@@ -14,7 +14,7 @@ struct File {
   int flags;
   off_t offset;
   int ref_count;
-  struct lock* lock;
+  struct lock *lock;
   struct vnode* vn;
 };
 

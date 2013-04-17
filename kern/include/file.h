@@ -14,7 +14,7 @@ struct File {
   off_t offset;
   int ref_count;
   // We only care about the particular entry.
-  struct lock* lock;
+  struct lock *lock;
   struct vnode* vn;
 };
 

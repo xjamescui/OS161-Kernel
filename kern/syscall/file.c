@@ -45,7 +45,7 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
   int fd, result, temp;
   int errno;
   size_t length;
-  // struct stat file_stat - not neede for this assignment
+  // struct stat file_stat - not needed for this assignment on append.
 
   // Check if it works without this.
   fd = -1;
@@ -65,7 +65,7 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
 
   // Filename is in userland.
   if (filename != "con:") {
-    k_filename = kmalloc(sizeof(char) * strlen(filename));
+    k_filename = (char *)kmalloc(sizeof(char) * strlen(filename));
     if (k_filename == NULL) {
       errno = ENOMEM;
       return -1;
@@ -130,6 +130,7 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
   curthread->file_desctable[fd]->ref_count = 1;
   curthread->file_desctable[fd]->offset = 0;
   curthread->file_desctable[fd]->flags = flags;
+  curthread->file_desctable[fd]->lock = lock_create("File Lock");
 
   *retval = fd;
 
@@ -156,6 +157,7 @@ int sys_close(int fd) {
     VOP_CLOSE(curthread->file_desctable[fd]->vn);
     temp_file = curthread->file_desctable[fd];
     curthread->file_desctable[fd] = NULL;
+    lock_destroy(temp_file->lock);
     kfree(temp_file);
   }
   else {
@@ -171,8 +173,6 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
   struct iovec *read_iovec;
   char *k_buf;
   int errno;
-  struct stat file_stat;
-  //size_t length;
 
   if (fd < 0 || fd > OPEN_MAX) {
     errno = EBADF;
@@ -195,14 +195,14 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
     return -1;
   }
 
-  read_uio = kmalloc(sizeof(struct uio));
-  read_iovec = kmalloc(sizeof(struct iovec));
+  lock_acquire(curthread->file_desctable[fd]->lock);
 
-  k_buf = kmalloc(buflen * sizeof(char));
+  read_uio = (struct uio *)kmalloc(sizeof(struct uio));
+  read_iovec = (struct iovec *)kmalloc(sizeof(struct iovec));
 
-  k_buf = "TEST.";
+  k_buf = (char *)kmalloc(buflen * sizeof(char));
 
-  uio_kinit(read_iovec, read_uio, k_buf, buflen, curthread->file_desctable[fd]->offset, UIO_READ);
+  uio_kinit(read_iovec, read_uio, (void *)k_buf, buflen, curthread->file_desctable[fd]->offset, UIO_READ);
 
   if(VOP_READ(curthread->file_desctable[fd]->vn, read_uio))
     return -1;
@@ -212,19 +212,19 @@ int sys_read(int fd, void *buf, size_t buflen, int32_t *retval) {
   //curthread->file_desctable[fd]->offset += *retval;
   curthread->file_desctable[fd]->offset = read_uio->uio_offset;
 
-  if(VOP_STAT(curthread->file_desctable[fd]->vn, &file_stat))
+  // This is not needed.
+  /*if(VOP_STAT(curthread->file_desctable[fd]->vn, &file_stat))
     return -1;
-
   if (curthread->file_desctable[fd]->offset == file_stat.st_size)
-    *retval = 0;
+    *retval = 0;*/
+
+  lock_release(curthread->file_desctable[fd]->lock);
 
   if (fd == 0)
     sys_close(fd);
 
-  if(copyout(k_buf, buf, buflen))
+  if(copyout((const void *)k_buf, (void *)buf, buflen))
     return -1;
-  //if(copyoutstr(k_buf, buf, buflen, &length))
-  //  return -1;
 
   kfree(k_buf);
   kfree(read_uio);
@@ -238,7 +238,6 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
   struct uio *write_uio;
   struct iovec *write_iovec;
   char *k_buf;
-  size_t length;
   int errno;
 
   if (fd < 0 || fd > OPEN_MAX) {
@@ -263,16 +262,19 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
     return -1;
   }
 
-  k_buf = kmalloc(nbytes * sizeof(char));
+  lock_acquire(curthread->file_desctable[fd]->lock);
 
-  copyinstr((const_userptr_t)buf, k_buf, nbytes, &length);
+  k_buf = (char *)kmalloc(nbytes * sizeof(char));
 
-  write_uio = kmalloc(sizeof(struct uio));
+  //copyinstr((const_userptr_t)buf, k_buf, nbytes, &length); Does not work.
+  copyin((const_userptr_t)buf, k_buf, nbytes);
 
-  write_iovec = kmalloc(sizeof(struct iovec));
+  write_uio = (struct uio *)kmalloc(sizeof(struct uio));
+
+  write_iovec = (struct iovec *)kmalloc(sizeof(struct iovec));
 
   // offset was zero before.
-  uio_kinit(write_iovec, write_uio, k_buf, nbytes, curthread->file_desctable[fd]->offset, UIO_WRITE);
+  uio_kinit(write_iovec, write_uio, (void *)k_buf, nbytes, curthread->file_desctable[fd]->offset, UIO_WRITE);
 
   if(VOP_WRITE(curthread->file_desctable[fd]->vn, write_uio))
     return -1;
@@ -280,6 +282,8 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval) {
   *retval = nbytes - write_uio->uio_resid;
 
   curthread->file_desctable[fd]->offset = write_uio->uio_offset;
+
+  lock_release(curthread->file_desctable[fd]->lock);
 
   if (fd == 1 || fd == 2)
     sys_close(fd);
@@ -300,6 +304,8 @@ int sys_dup2(int oldfd, int newfd) {
     return -1;
   }
 
+  //lock_acquire(&curthread->file_desctable[oldfd]->lock);
+
   if (oldfd == newfd)
     return 0;
 
@@ -311,6 +317,8 @@ int sys_dup2(int oldfd, int newfd) {
 
   curthread->file_desctable[newfd] = curthread->file_desctable[oldfd];
   curthread->file_desctable[newfd]->ref_count++;
+
+  //lock_release(&curthread->file_desctable[oldfd]->lock);
 
   return 0;
 }
@@ -325,7 +333,7 @@ int sys_chdir(const char *pathname) {
 
   size = sizeof(pathname);
 
-  k_pathname = kmalloc(size * sizeof(char));
+  k_pathname = (char *)kmalloc(size * sizeof(char));
 
   copyinstr((const_userptr_t)pathname, k_pathname, size, &size);
 
@@ -351,18 +359,18 @@ int sys__getcwd(char *buf, size_t buflen) {
     return -1;
   }
 
-  k_buf = (char *) kmalloc(buflen * sizeof(char));
+  k_buf = (char *)kmalloc(buflen * sizeof(char));
 
-  getcwd_iovec = kmalloc(sizeof(struct iovec));
+  getcwd_iovec = (struct iovec *)kmalloc(sizeof(struct iovec));
 
-  getcwd_uio = kmalloc(sizeof(struct uio));
+  getcwd_uio = (struct uio *)kmalloc(sizeof(struct uio));
 
   uio_kinit(getcwd_iovec, getcwd_uio, k_buf, buflen, 0, UIO_READ);
 
   if(vfs_getcwd(getcwd_uio))
     return -1;
 
-  copyout(k_buf, (void *)buf, sizeof(buflen));
+  copyout((const void*)k_buf, (void *)buf, sizeof(buflen));
 
   return 0;
 }
@@ -379,13 +387,19 @@ off_t sys_lseek(int fd, off_t pos, int whence, off_t *retval) {
     return -1;
   }
 
+  if (curthread->file_desctable[fd] == NULL) {
+    errno = EBADF;
+    return -1;
+  }
+
+  //lock_acquire(&curthread->file_desctable[fd]->lock);
+
   if(VOP_STAT(curthread->file_desctable[fd]->vn, &file_stat))
     return -1;
 
   if (whence == SEEK_SET)
     new_offset = pos;
-
-  else if (whence == SEEK_CUR || whence) {
+  else if (whence == SEEK_CUR) {
     new_offset = curthread->file_desctable[fd]->offset + pos;
   }
   else if (whence == SEEK_END) {
@@ -409,6 +423,8 @@ off_t sys_lseek(int fd, off_t pos, int whence, off_t *retval) {
   curthread->file_desctable[fd]->offset = new_offset;
 
   *retval = new_offset;
+
+  //lock_release(&curthread->file_desctable[fd]->lock);
 
   return 0;
 }
