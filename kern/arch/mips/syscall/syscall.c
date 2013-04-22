@@ -35,9 +35,10 @@
 #include <thread.h>
 #include <current.h>
 #include <syscall.h>
+#include <copyinout.h>
 
 #include <file.h>
-#include <copyinout.h>
+#include <proc.h>
 
 /*
  * System call dispatcher.
@@ -159,6 +160,21 @@ syscall(struct trapframe *tf)
           tf->tf_v1 = ret;
         }
         break;
+
+        // Process System Calls.
+
+        case SYS_fork:
+          err = sys_fork(tf, &retval);
+          break;
+
+        case SYS_getpid:
+          err = 0;
+          retval = sys_getpid();
+          break;
+
+        case SYS_waitpid:
+          err = sys_waitpid(tf->tf_a0, &tf->tf_a1, tf->tf_a2, &retval);
+          break;
 
       /* End add stuff */
  

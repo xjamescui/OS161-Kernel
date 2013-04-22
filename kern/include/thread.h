@@ -118,6 +118,9 @@ struct thread {
 
   // File descriptor table.
   struct File *file_desctable[OPEN_MAX];
+
+  // PID
+  struct Proc *process;
 };
 
 /* Call once during system startup to allocate data structures. */

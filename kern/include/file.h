@@ -6,7 +6,7 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
-#include<types.h>
+#include <types.h>
 
 struct File {
   char *name;

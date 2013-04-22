@@ -48,8 +48,10 @@
 #include <mainbus.h>
 #include <vnode.h>
 
-// File sys_calls
+// System Calls
 #include <file.h>
+
+#include <proc.h>
 
 #include "opt-synchprobs.h"
 #include "opt-defaultscheduler.h"
@@ -122,11 +124,11 @@ thread_create(const char *name)
 {
 	struct thread *thread;
   int i;
+  pid_t pid;
 
   // File Descriptor Table. Save OFT here too. Move it (OFT) later. You'd have
   // to store it with execv and fork when creating a new process to keep track
   // of the open files associated with a process.
-
 
 	DEBUGASSERT(name != NULL);
 
@@ -166,6 +168,25 @@ thread_create(const char *name)
   // Clear the table!
   for (i = 0; i < OPEN_MAX; i++)
       thread->file_desctable[i] = NULL;
+
+  // Assign a -1 pid.
+  thread->process = (struct Proc *)kmalloc(sizeof(struct Proc));
+  /*if((pid = get_next_pid(thread))) {
+    errno = EMPROC;
+  }*/
+  pid = get_next_pid(thread);
+  //(void)pid;
+  thread->process->pid = pid;
+  //thread->process->pid = get_next_pid(thread);
+  // Init's favourite song is Name (that and Slide for me).
+  if (curthread == NULL)
+    pid = -1;
+  else
+    pid = curthread->process->pid;
+  //thread->process->ppid = curthread->process->pid;
+  thread->process->ppid = pid;
+
+  thread->process->exit = sem_create("Process Exit Semaphore", 0); 
 
 	return thread;
 }
@@ -274,6 +295,8 @@ thread_destroy(struct thread *thread)
 
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
+
+  free_this_pid(thread->process->pid);
 
 	kfree(thread->t_name);
 	kfree(thread);
