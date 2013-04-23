@@ -24,12 +24,22 @@
 #include <../../user/include/errno.h>
 #include <uio.h>
 #include <synch.h>
+#include <kern/wait.h>
 
 // System processes.
 static struct thread * process_table[PID_MAX];
 
-// Zombie table. Double tap to be sure.
-static sturct thread * zombie_table[PID_MAX];
+//static struct spinlock *slock;
+
+// Zombie table. Double tap to be sure. Bad idea.
+//static struct thread * zombie_table[PID_MAX];
+
+/*void lock_init(void) {
+  if (slock == NULL) {
+    slock = (struct spinlock *)kmalloc(sizeof(struct spinlock));
+    spinlock_init(slock);
+  }
+}*/
 
 pid_t get_next_pid(struct thread *new_thread) {
 
@@ -48,7 +58,6 @@ pid_t get_next_pid(struct thread *new_thread) {
   process_table[pid] = new_thread;
 
   //kprintf("I got here in get_next_pid\n");
-
   return pid;
 }
 
@@ -60,26 +69,9 @@ struct thread * get_thread_by_pid(pid_t pid) {
   return process_table[pid];
 }
 
-struct thread * get_zombie_by_pid(pid_t pid) {
-  return zombie_table[pid];
-}
-
-int get_next_zombie(struct thread *zombie) {
-
-  pid_t pid;
-
-  pid = PID_MIN;
-  while (zombie_table[pid] != NULL)
-    pid++;
-
-  zombie_table[pid] = *zombie;
-
-  return pid;
-}
-
 void child_fork_entry(void *data1, unsigned long data2) {
 
-  struct addrspace addrspace;
+  struct addrspace* addrspace;
   struct trapframe tf, *tf_ptr;
 
   tf_ptr = (struct trapframe *)data1;
@@ -92,8 +84,9 @@ void child_fork_entry(void *data1, unsigned long data2) {
   tf_ptr->tf_epc += 4;
 
   // Copy addrspace to stack and activate.
-  addrspace = *((struct addrspace *)data2);
-  as_copy(&addrspace, &curthread->t_addrspace);
+  addrspace = ((struct addrspace *)data2);
+  curthread->t_addrspace = addrspace;
+  // as_copy(&addrspace, &curthread->t_addrspace);
   as_activate(curthread->t_addrspace);
 
   // Copy trapfram and enter usermode.
@@ -116,7 +109,7 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   struct trapframe *new_tf;
   struct thread *child;
 
-  new_addrspace = kmalloc(sizeof(struct addrspace));
+  // new_addrspace = kmalloc(sizeof(struct addrspace));
   if((result = as_copy(curthread->t_addrspace, &new_addrspace))) {
     errno = ENOMEM;
     return result;
@@ -126,15 +119,19 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   //memcopy(tf, new_tf, sizeof(struct trapframe));
   *new_tf = *tf;
 
+  //spinlock_acquire(slock);
+
   // figure out how to get the name.
   if((result = thread_fork("child", child_fork_entry, (struct trapframe *)new_tf, (unsigned long)new_addrspace, &child)))
     return result;
 
   i = 3;
-  // I'm not too sure about this either.
+  // Increase the reference count.
   while (curthread->file_desctable[i] != NULL) {
     child->file_desctable[i] = curthread->file_desctable[i];
   }
+
+  //spinlock_release(slock);
 
   // Stupid, Me
   //*retval = get_next_pid(child);
@@ -148,13 +145,17 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   return 0;
 }
 
-// pid_t waitpid(pid_t pid, int *status, int options);
-int sys_waitpid(pit_t pid, int *status, int options, int *retval) {
+int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
   int errno;
   struct thread *child;
 
   // WAITANY(-1) and WAITMYPGM(0) are not supported?
+
+  if (options != 0) {
+    errno = EINVAL;
+    return -1;
+  }
 
   // Waiting for yourself.
   if (pid == curthread->process->pid) {
@@ -162,39 +163,52 @@ int sys_waitpid(pit_t pid, int *status, int options, int *retval) {
     return -1;
   }
 
-  if ((get_thread_by_pid(pid) == NULL) && (get_zombie_by_pid(pid) == NULL)) {
+  if (get_thread_by_pid(pid) == NULL) {
     errno = ESRCH;
     return -1;
   }
 
-  if(get_thread_by_pid(pid) != NULL) {
-    child = get_thread_by_pid(pid);
+
+  if (child->process->ppid != curthread->process->pid) {
+    errno = ECHILD;
+    return -1;
+  }
+
+  //spinlock_acquire(slock);
+
+  child = get_thread_by_pid(pid);
+
+  if (child->process->exited == 0) {
 
     // Check that we are not waiting on a parent
     if (curthread->process->ppid == child->process->pid) {
       errno = ECHILD;
+      //spinlock_release(slock);
       return -1;
     }
 
     P(child->process->exit);
   }
-  else {
-    child = get_zombie_by_pid(pid);
-  }
+
+  //spinlock_release(slock);
 
   *status = child->process->exitcode;
 
   *retval = pid;
+
+  free_this_pid(pid);
 
   return 0;
 }
 
 void sys__exit(int exitcode) {
 
-  curthread->process->exitcode = exitcode;
+  if ((get_thread_by_pid(curthread->process->ppid)) == NULL)
+    free_this_pid(curthread->process->pid);
 
-  // Assumption, the zombies are a minority, always.
-  get_next_zombie(curthread);
+  curthread->process->exitcode = _MKWVAL(exitcode);
+
+  curthread->process->exited = 1;
 
   V(curthread->process->exit);
 

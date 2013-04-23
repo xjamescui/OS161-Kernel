@@ -126,7 +126,7 @@ static
 int
 common_prog(int nargs, char **args)
 {
-	int result;
+	int result, status, *retval;
 
 #if OPT_SYNCHPROBS
 	kprintf("Warning: this probably won't work with a "
@@ -137,6 +137,9 @@ common_prog(int nargs, char **args)
 			cmd_progthread /* thread function */,
 			args /* thread arg */, nargs /* thread arg */,
 			NULL);
+
+  sys_waitpid(result, &status, 0, retval);
+
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
 		return result;

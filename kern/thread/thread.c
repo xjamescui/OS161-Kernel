@@ -176,9 +176,8 @@ thread_create(const char *name)
   }*/
   pid = get_next_pid(thread);
   //(void)pid;
-  thread->process->pid = pid;
-  //thread->process->pid = get_next_pid(thread);
-  // Init's favourite song is Name (that and Slide for me).
+  //thread->process->pid = pid;
+  //Init's favourite song is Name (that and Slide for me).
   if (curthread == NULL)
     pid = -1;
   else
@@ -187,6 +186,8 @@ thread_create(const char *name)
   thread->process->ppid = pid;
 
   thread->process->exit = sem_create("Process Exit Semaphore", 0); 
+
+  thread->process->exited = 0;
 
 	return thread;
 }
@@ -296,9 +297,9 @@ thread_destroy(struct thread *thread)
 	/* sheer paranoia */
 	thread->t_wchan_name = "DESTROYED";
 
-  free_this_pid(thread->process->pid);
-
 	kfree(thread->t_name);
+  sem_destroy(thread->process->exit);
+  kfree(thread->process);
 	kfree(thread);
 }
 

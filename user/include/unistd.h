@@ -44,7 +44,8 @@
 #include <kern/time.h>
 #include <kern/unistd.h>
 #include <kern/wait.h>
-#include <kern/file.h>
+//#include <kern/file.h>
+//#include <kern/proc.h>
 
 /*
  * Prototypes for OS/161 system calls.

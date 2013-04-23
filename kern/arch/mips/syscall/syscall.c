@@ -92,6 +92,8 @@ syscall(struct trapframe *tf)
 
 	callno = tf->tf_v0;
 
+  //lock_init();
+
 	/*
 	 * Initialize retval to 0. Many of the system calls don't
 	 * really return a value, just 0 for success and -1 on
@@ -173,7 +175,13 @@ syscall(struct trapframe *tf)
           break;
 
         case SYS_waitpid:
-          err = sys_waitpid(tf->tf_a0, &tf->tf_a1, tf->tf_a2, &retval);
+          err = sys_waitpid(tf->tf_a0, (int *)&tf->tf_a1, tf->tf_a2, &retval);
+          break;
+
+        case SYS__exit:
+          err = 0;
+          retval = 0;
+          sys__exit(tf->tf_a0);
           break;
 
       /* End add stuff */
