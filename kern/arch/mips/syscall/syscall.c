@@ -92,7 +92,6 @@ syscall(struct trapframe *tf)
 
 	callno = tf->tf_v0;
 
-  //lock_init();
 
 	/*
 	 * Initialize retval to 0. Many of the system calls don't

@@ -116,12 +116,9 @@ spinlock_acquire(struct spinlock *lk)
 void
 spinlock_release(struct spinlock *lk)
 {
-  // DEBUG code.
-  //struct cpu* holder;
 
 	/* this must work before curcpu initialization */
 	if (CURCPU_EXISTS()) {
-    //holder = curcpu->c_self;
 		KASSERT(lk->lk_holder == curcpu->c_self);
 	}
 

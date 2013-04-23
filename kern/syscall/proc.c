@@ -29,17 +29,8 @@
 // System processes.
 static struct thread * process_table[PID_MAX];
 
-//static struct spinlock *slock;
-
 // Zombie table. Double tap to be sure. Bad idea.
 //static struct thread * zombie_table[PID_MAX];
-
-/*void lock_init(void) {
-  if (slock == NULL) {
-    slock = (struct spinlock *)kmalloc(sizeof(struct spinlock));
-    spinlock_init(slock);
-  }
-}*/
 
 pid_t get_next_pid(struct thread *new_thread) {
 
@@ -109,17 +100,14 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   struct trapframe *new_tf;
   struct thread *child;
 
-  // new_addrspace = kmalloc(sizeof(struct addrspace));
+  //new_addrspace = kmalloc(sizeof(struct addrspace));
   if((result = as_copy(curthread->t_addrspace, &new_addrspace))) {
     errno = ENOMEM;
     return result;
   }
 
   new_tf = kmalloc(sizeof(struct trapframe));
-  //memcopy(tf, new_tf, sizeof(struct trapframe));
   *new_tf = *tf;
-
-  //spinlock_acquire(slock);
 
   // figure out how to get the name.
   if((result = thread_fork("child", child_fork_entry, (struct trapframe *)new_tf, (unsigned long)new_addrspace, &child)))
@@ -128,10 +116,9 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   i = 3;
   // Increase the reference count.
   while (curthread->file_desctable[i] != NULL) {
+    curthread->file_desctable[i]->ref_count += 1;
     child->file_desctable[i] = curthread->file_desctable[i];
   }
-
-  //spinlock_release(slock);
 
   // Stupid, Me
   //*retval = get_next_pid(child);
@@ -174,8 +161,6 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
     return -1;
   }
 
-  //spinlock_acquire(slock);
-
   child = get_thread_by_pid(pid);
 
   if (child->process->exited == 0) {
@@ -183,14 +168,11 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
     // Check that we are not waiting on a parent
     if (curthread->process->ppid == child->process->pid) {
       errno = ECHILD;
-      //spinlock_release(slock);
       return -1;
     }
 
     P(child->process->exit);
   }
-
-  //spinlock_release(slock);
 
   *status = child->process->exitcode;
 
@@ -203,8 +185,7 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
 void sys__exit(int exitcode) {
 
-  if ((get_thread_by_pid(curthread->process->ppid)) == NULL)
-    free_this_pid(curthread->process->pid);
+  // Condition where parent has exited before the child.
 
   curthread->process->exitcode = _MKWVAL(exitcode);
 

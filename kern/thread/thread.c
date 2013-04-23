@@ -126,10 +126,6 @@ thread_create(const char *name)
   int i;
   pid_t pid;
 
-  // File Descriptor Table. Save OFT here too. Move it (OFT) later. You'd have
-  // to store it with execv and fork when creating a new process to keep track
-  // of the open files associated with a process.
-
 	DEBUGASSERT(name != NULL);
 
 	thread = kmalloc(sizeof(*thread));
@@ -177,6 +173,7 @@ thread_create(const char *name)
   pid = get_next_pid(thread);
   //(void)pid;
   //thread->process->pid = pid;
+  
   //Init's favourite song is Name (that and Slide for me).
   if (curthread == NULL)
     pid = -1;
@@ -298,9 +295,11 @@ thread_destroy(struct thread *thread)
 	thread->t_wchan_name = "DESTROYED";
 
 	kfree(thread->t_name);
+
   sem_destroy(thread->process->exit);
   kfree(thread->process);
-	kfree(thread);
+	
+  kfree(thread);
 }
 
 /*

@@ -76,7 +76,7 @@ check(void)
 
 	mypid = getpid();
 
-	/* Make sure each fork has its own address space. */
+	//Make sure each fork has its own address space. 
 	for (i=0; i<800; i++) {
 		volatile int seenpid;
 		seenpid = mypid;
@@ -104,11 +104,11 @@ dowait(int nowait, int pid)
 	int x;
 
 	if (pid<0) {
-		/* fork in question failed; just return */
+		//fork in question failed; just return 
 		return;
 	}
 	if (pid==0) {
-		/* in the fork in question we were the child; exit */
+		 //in the fork in question we were the child; exit 
 		exit(0);
 	}
 
