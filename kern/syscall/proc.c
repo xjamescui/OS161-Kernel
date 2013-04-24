@@ -26,6 +26,8 @@
 #include <synch.h>
 #include <kern/wait.h>
 
+#define ARGSIZE 20
+
 // System processes.
 static struct thread * process_table[PID_MAX];
 
@@ -194,4 +196,100 @@ void sys__exit(int exitcode) {
   V(curthread->process->exit);
 
   thread_exit();
+}
+
+//int execv(const char *program, char **args);
+int sys_execv(const char *program, char **args, int *retval) {
+
+  // #define ARGSIZE 20
+
+  int argc, size, result, temp, i, j, pad;
+  size_t *actual;
+  char **kargs, *ptr, *name, **pack;
+  struct vnode *vn;
+  vaddr_t entrypoint, userstk;
+
+  // There wan't a problem with this in file name copy
+  // and I therefore suspect there isn't one here.
+
+  // what happens to the case where the first argument is
+  // the program name?
+
+  // Get the ags in and pad them.
+  argc = 0;
+  while (1) {
+
+    if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char *)))) {
+      errno = EFAULT;
+      return result;
+    }
+
+    if (ptr == NULL)
+      break;
+
+    kargs[argc] = kmalloc(sizeof(char) * ARGSIZE);
+
+    if((result = copyinstr((const_userptr_t)args[argc], kargs[argc], ARGSIZE, actual))) {
+      errno = E2BIG;
+      return result;
+    }
+
+    temp = strlen(kargs[argc]) + 1;
+    temp += (temp % 4);
+    pad[argc] = kmalloc(sizeof(char) * temp);
+    pad[argc] = kargs[argc];
+    for (i = strlen(kargs[argc]) + 1; i < temp; i++)
+      pad[argc][i] = '\0';
+
+    argc++;
+  }
+
+  kargs[argc + 1] = NULL;
+  pad[argc + 1] = NULL;
+
+  // Check valid program.
+  if ((result = copyinstr((const_userptr_t)program, name, 100, actual))) {
+    errno = ENOENT;
+    return result;
+  }
+
+  // Get the program into memory.
+  if ((result = vfs_open(name, O_RDONLY, 0, &vn))) {
+    return result;
+  }
+
+  // Prepare addrspace.
+  KASSERT(curthread->t_addrspace == NULL);
+  if((curthread->t_addrspace = as_create()) == NULL) {
+    vfs_close(vn);
+    errno = ENOMEM;
+    return -1;
+  }
+
+  as_activate(curthread->t_addrspace);
+
+  // Gandalf The White.
+  if((result = load_elf(vn, &entrypoint))) {
+    vfs_close(vn);
+    errno = ENOEXEC;
+    return -1;
+  }
+
+  vfs_close(vn);
+
+  // Setup user stack.
+  if ((result = as_define_stack(curthread->t_addrspace, &userstk))) {
+    return result;
+  }
+
+  //copyout the stack.
+  if((result = copyout(const void *src, userptr_t userdest, size_t len))) {
+    return result;
+  }
+
+  // What?! I'm Agent Smith?!
+  enter_new_process(argc, NULL /*userspace addr of argv*/, userstk, entrypoint);
+
+  panic("enter_new_process returned. Fusion failed.\n");
+  return EINVAL;
 }
