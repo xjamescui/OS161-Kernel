@@ -6,14 +6,14 @@
 #ifndef _FILE_H_
 #define _FILE_H_
 
-#include <limits.h>
 #include <types.h>
 
 struct File {
-  char name[NAME_MAX];
+  char *name;
   int flags;
   off_t offset;
   int ref_count;
+  // We only care about the particular entry.
   struct lock *lock;
   struct vnode* vn;
 };

@@ -37,8 +37,7 @@
 #include <syscall.h>
 #include <copyinout.h>
 
-#include <file.h>
-#include <proc.h>
+#include <syscall.h>
 
 /*
  * System call dispatcher.

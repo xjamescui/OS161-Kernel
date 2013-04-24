@@ -61,7 +61,7 @@ int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 
 // File System Calls
-int sys_open(const char *filename, int flags, int mode, int32_t *retval);
+/*int sys_open(const char *filename, int flags, int mode, int32_t *retval);
 int sys_close(int fd);
 int sys_read(int fd, void *buf, size_t buflen, int32_t *retval);
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
@@ -74,7 +74,7 @@ off_t sys_lseek(int fd, off_t pos, int whence, off_t *retval);
 pid_t sys_getpid(void);
 int sys_fork(struct trapframe *tf, pid_t *retval);
 int sys_waitpid(pid_t pid, int *status, int options, int *retval);
-void sys__exit(int exitcode);
+void sys__exit(int exitcode);*/
 
 
 

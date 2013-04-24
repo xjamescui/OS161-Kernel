@@ -49,9 +49,9 @@
 #include <vnode.h>
 
 // System Calls
-#include <file.h>
-
-#include <proc.h>
+#include <syscall.h>
+//#include <proc.h>
+//#include <file.h>
 
 #include "opt-synchprobs.h"
 #include "opt-defaultscheduler.h"
@@ -170,22 +170,10 @@ thread_create(const char *name)
   /*if((pid = get_next_pid(thread))) {
     errno = EMPROC;
   }*/
-  pid = get_next_pid(thread);
+  thread->pid = get_next_pid(thread);
   //(void)pid;
   //thread->process->pid = pid;
   
-  //Init's favourite song is Name (that and Slide for me).
-  if (curthread == NULL)
-    pid = -1;
-  else
-    pid = curthread->process->pid;
-  //thread->process->ppid = curthread->process->pid;
-  thread->process->ppid = pid;
-
-  thread->process->exit = sem_create("Process Exit Semaphore", 0); 
-
-  thread->process->exited = 0;
-
 	return thread;
 }
 
@@ -295,6 +283,8 @@ thread_destroy(struct thread *thread)
 	thread->t_wchan_name = "DESTROYED";
 
 	kfree(thread->t_name);
+
+  //thread_exited(thread->process->pid);
 
   sem_destroy(thread->process->exit);
   kfree(thread->process);
@@ -519,6 +509,7 @@ thread_fork(const char *name,
 	    struct thread **ret)
 {
 	struct thread *newthread;
+  struct Proc *child;
 
 	newthread = thread_create(name);
 	if (newthread == NULL) {
@@ -558,6 +549,10 @@ thread_fork(const char *name,
 
 	/* Set up the switchframe so entrypoint() gets called */
 	switchframe_init(newthread, entrypoint, data1, data2);
+
+  child = get_thread_by_pid(newthread->pid);
+
+  child->ppid = curthread->pid;
 
 	/* Lock the current cpu's run queue and make the new thread runnable */
 	thread_make_runnable(newthread, false);

@@ -29,7 +29,7 @@
 #define ARGSIZE 20
 
 // System processes.
-static struct thread * process_table[PID_MAX];
+static struct Proc * process_table[PID_MAX];
 
 // Zombie table. Double tap to be sure. Bad idea.
 //static struct thread * zombie_table[PID_MAX];
@@ -38,6 +38,8 @@ pid_t get_next_pid(struct thread *new_thread) {
 
   pid_t pid;
   int errno;
+
+  struct Proc *entry;
 
   pid = PID_MIN;
   while (process_table[pid] != NULL)
@@ -48,17 +50,25 @@ pid_t get_next_pid(struct thread *new_thread) {
     return -1;
   }
 
-  process_table[pid] = new_thread;
+  entry = (struct Proc *)kmalloc(sizeof(struct Proc));
+
+  entry->ppid = -1;
+  entry->pid = pid;
+  entry->exited = 0;
+  entry->exitcode = 1;
+
+  process_table[pid] = entry;
 
   //kprintf("I got here in get_next_pid\n");
   return pid;
 }
 
 void free_this_pid(pid_t pid) {
+  kfree(process_table[pid]);
   process_table[pid] = NULL;
 }
 
-struct thread * get_thread_by_pid(pid_t pid) {
+struct Proc * get_process_by_pid(pid_t pid) {
   return process_table[pid];
 }
 
@@ -89,18 +99,18 @@ void child_fork_entry(void *data1, unsigned long data2) {
 
 // Process Sys Calls.
 
-pid_t sys_getpid(void) {
-
-  return curthread->process->pid;
+pid_t sys_getpid() {
+  return curthread->pid;
 }
-
 
 int sys_fork(struct trapframe *tf, pid_t *retval) {
 
   struct addrspace *new_addrspace;
-  int result, errno, i;
+  int result, errno, i, a;
   struct trapframe *new_tf;
   struct thread *child;
+
+  a = splhigh();
 
   //new_addrspace = kmalloc(sizeof(struct addrspace));
   if((result = as_copy(curthread->t_addrspace, &new_addrspace))) {
@@ -122,6 +132,8 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
     child->file_desctable[i] = curthread->file_desctable[i];
   }
 
+  splx(a);
+
   // Stupid, Me
   //*retval = get_next_pid(child);
   /*if (child->process->pid == child->process->ppid)
@@ -129,7 +141,7 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   else
     *retval = child->process->pid;*/
 
-  *retval = child->process->pid;
+  *retval = child->pid;
 
   return 0;
 }
@@ -187,19 +199,27 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
 void sys__exit(int exitcode) {
 
-  // Condition where parent has exited before the child.
+  struct thread *parent;
 
-  curthread->process->exitcode = _MKWVAL(exitcode);
+  if (curthread->process->ppid >= 2) {
 
-  curthread->process->exited = 1;
+    parent = get_thread_by_pid(curthread->process->ppid);
 
-  V(curthread->process->exit);
+    if (parent != NULL) {
+
+      curthread->process->exitcode = _MKWVAL(exitcode);
+
+      curthread->process->exited = 1;
+
+      V(curthread->process->exit);
+    }
+  }
 
   thread_exit();
 }
 
 //int execv(const char *program, char **args);
-int sys_execv(const char *program, char **args, int *retval) {
+/*int sys_execv(const char *program, char **args, int *retval) {
 
   // #define ARGSIZE 20
 
@@ -288,8 +308,8 @@ int sys_execv(const char *program, char **args, int *retval) {
   }
 
   // What?! I'm Agent Smith?!
-  enter_new_process(argc, NULL /*userspace addr of argv*/, userstk, entrypoint);
+  enter_new_process(argc, NULL //userspace addr of argv, userstk, entrypoint);
 
   panic("enter_new_process returned. Fusion failed.\n");
   return EINVAL;
-}
+}*/

@@ -120,7 +120,9 @@ struct thread {
   struct File *file_desctable[OPEN_MAX];
 
   // PID
-  struct Proc *process;
+  pid_t ppid;
+
+  pid_t pid;
 };
 
 /* Call once during system startup to allocate data structures. */
