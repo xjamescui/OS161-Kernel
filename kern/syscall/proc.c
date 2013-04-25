@@ -34,11 +34,10 @@ static struct Proc * process_table[PID_MAX];
 // Zombie table. Double tap to be sure. Bad idea.
 //static struct thread * zombie_table[PID_MAX];
 
-pid_t get_next_pid(struct thread *new_thread) {
+int assign_pid(struct thread *new_thread) {
 
   pid_t pid;
   int errno;
-
   struct Proc *entry;
 
   pid = PID_MIN;
@@ -52,24 +51,40 @@ pid_t get_next_pid(struct thread *new_thread) {
 
   entry = (struct Proc *)kmalloc(sizeof(struct Proc));
 
-  entry->ppid = -1;
+  new_thread->pid = pid;
+
+  entry->ppid = new_thread->ppid;
   entry->pid = pid;
   entry->exited = 0;
   entry->exitcode = 1;
+  entry->exit = sem_create("Child Sem", 0);
+  entry->self = new_thread;
 
   process_table[pid] = entry;
 
-  //kprintf("I got here in get_next_pid\n");
   return pid;
 }
 
 void free_this_pid(pid_t pid) {
-  kfree(process_table[pid]);
-  process_table[pid] = NULL;
+
+  struct Proc *proc;
+
+  proc = get_process_by_pid(pid);
+
+  if (proc != NULL) {
+
+    sem_destroy(proc->exit);
+    kfree(process_table[pid]);
+    process_table[pid] = NULL;
+  }
 }
 
 struct Proc * get_process_by_pid(pid_t pid) {
   return process_table[pid];
+}
+
+struct thread * get_thread_by_pid(pid_t pid) {
+  return process_table[pid]->self;
 }
 
 void child_fork_entry(void *data1, unsigned long data2) {
@@ -132,16 +147,13 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
     child->file_desctable[i] = curthread->file_desctable[i];
   }
 
-  splx(a);
+  child->ppid = curthread->pid;
 
-  // Stupid, Me
-  //*retval = get_next_pid(child);
-  /*if (child->process->pid == child->process->ppid)
-    *retval = get_next_pid(child);
-  else
-    *retval = child->process->pid;*/
+  assign_pid(child);
 
   *retval = child->pid;
+
+  splx(a);
 
   return 0;
 }
@@ -149,7 +161,7 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
 int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
   int errno;
-  struct thread *child;
+  struct Proc *childp;
 
   // WAITANY(-1) and WAITMYPGM(0) are not supported?
 
@@ -159,36 +171,34 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
   }
 
   // Waiting for yourself.
-  if (pid == curthread->process->pid) {
+  if (pid == curthread->pid) {
     errno = ECHILD;
     return -1;
   }
 
-  if (get_thread_by_pid(pid) == NULL) {
+  childp = get_process_by_pid(pid);
+  if (childp == NULL) {
     errno = ESRCH;
     return -1;
   }
 
-
-  if (child->process->ppid != curthread->process->pid) {
+  // Check that we are not waiting on a parent
+  if (childp->pid == curthread->ppid) {
     errno = ECHILD;
     return -1;
   }
 
-  child = get_thread_by_pid(pid);
+  // Check that the parent is waiting on the child
+  /*if (childp->ppid != curthread->pid) {
+    errno = ECHILD;
+    return -1;
+  }*/
 
-  if (child->process->exited == 0) {
-
-    // Check that we are not waiting on a parent
-    if (curthread->process->ppid == child->process->pid) {
-      errno = ECHILD;
-      return -1;
-    }
-
-    P(child->process->exit);
+  if (childp->exited == 0) {
+      P(childp->exit);
   }
 
-  *status = child->process->exitcode;
+  *status = childp->exitcode;
 
   *retval = pid;
 
@@ -199,19 +209,24 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
 void sys__exit(int exitcode) {
 
-  struct thread *parent;
+  struct Proc *childp, *parentp;
 
-  if (curthread->process->ppid >= 2) {
+  if (curthread->ppid >= 2) {
 
-    parent = get_thread_by_pid(curthread->process->ppid);
+    parentp = get_process_by_pid(curthread->ppid);
 
-    if (parent != NULL) {
+    if (parentp->exited != 1) {
 
-      curthread->process->exitcode = _MKWVAL(exitcode);
+      childp = get_process_by_pid(curthread->pid);
 
-      curthread->process->exited = 1;
+      childp->exitcode = _MKWVAL(exitcode);
 
-      V(curthread->process->exit);
+      childp->exited = 1;
+
+      V(childp->exit);
+    }
+    else {
+      free_this_pid(curthread->pid);
     }
   }
 

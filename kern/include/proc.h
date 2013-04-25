@@ -24,10 +24,10 @@ struct Proc {
 
 void child_fork_entry(void *data1, unsigned long data2);
 
-struct thread * get_thread_by_pid(pid_t pid);
-pid_t get_next_pid(struct thread *new_thread);
+int assign_pid(struct thread *new_thread);
 void free_this_pid(pid_t pid);
-void thread_exited(pid_t pid);
+struct Proc * get_process_by_pid(pid_t pid);
+struct thread * get_thread_by_pid(pid_t pid);
 
 pid_t sys_getpid(void);
 int sys_fork(struct trapframe *tf, pid_t *retval);

@@ -119,7 +119,7 @@ struct thread {
   // File descriptor table.
   struct File *file_desctable[OPEN_MAX];
 
-  // PID
+  // PIDs
   pid_t ppid;
 
   pid_t pid;

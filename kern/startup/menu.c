@@ -126,7 +126,7 @@ static
 int
 common_prog(int nargs, char **args)
 {
-	int result, status, *retval;
+	int result;//, status, *retval;
   struct thread *prog;
 
 #if OPT_SYNCHPROBS
@@ -141,8 +141,8 @@ common_prog(int nargs, char **args)
 		return result;
 	}
 
-  if(sys_waitpid(prog->process->pid, &status, 0, retval))
-    kprintf("MENU waitpid\n");
+  /*if(sys_waitpid(prog->pid, &status, 0, retval))
+    kprintf("MENU waitpid\n");*/
 
 	return 0;
 }

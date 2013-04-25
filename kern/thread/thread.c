@@ -124,7 +124,6 @@ thread_create(const char *name)
 {
 	struct thread *thread;
   int i;
-  pid_t pid;
 
 	DEBUGASSERT(name != NULL);
 
@@ -165,15 +164,10 @@ thread_create(const char *name)
   for (i = 0; i < OPEN_MAX; i++)
       thread->file_desctable[i] = NULL;
 
-  // Assign a -1 pid.
-  thread->process = (struct Proc *)kmalloc(sizeof(struct Proc));
-  /*if((pid = get_next_pid(thread))) {
-    errno = EMPROC;
-  }*/
-  thread->pid = get_next_pid(thread);
-  //(void)pid;
-  //thread->process->pid = pid;
-  
+  // Process syscall stuff
+  // init's favourite song is Name (that and slide for me).
+  thread->ppid = -1;
+
 	return thread;
 }
 
@@ -284,11 +278,6 @@ thread_destroy(struct thread *thread)
 
 	kfree(thread->t_name);
 
-  //thread_exited(thread->process->pid);
-
-  sem_destroy(thread->process->exit);
-  kfree(thread->process);
-	
   kfree(thread);
 }
 
@@ -509,7 +498,7 @@ thread_fork(const char *name,
 	    struct thread **ret)
 {
 	struct thread *newthread;
-  struct Proc *child;
+  //struct Proc *child;
 
 	newthread = thread_create(name);
 	if (newthread == NULL) {
@@ -550,9 +539,9 @@ thread_fork(const char *name,
 	/* Set up the switchframe so entrypoint() gets called */
 	switchframe_init(newthread, entrypoint, data1, data2);
 
-  child = get_thread_by_pid(newthread->pid);
+  //child = get_thread_by_pid(newthread->pid);
 
-  child->ppid = curthread->pid;
+  //child->ppid = curthread->pid;
 
 	/* Lock the current cpu's run queue and make the new thread runnable */
 	thread_make_runnable(newthread, false);
@@ -822,7 +811,7 @@ void
 thread_exit(void)
 {
 	struct thread *cur;
-
+  struct Proc *curp;
 	cur = curthread;
 
 	/* VFS fields */
@@ -847,6 +836,12 @@ thread_exit(void)
 
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
+
+  // Stuff for proc sys calls.
+  curp = get_process_by_pid(cur->pid);
+  // Bootstrap errors.
+  if (curp != NULL)
+    curp->exited = 1;
 
 	/* Interrupts off on this processor */
         splhigh();
