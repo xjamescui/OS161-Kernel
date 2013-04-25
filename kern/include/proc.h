@@ -9,7 +9,7 @@
 #define _PROC_H
 
 // Previously on It Does Not Work,
-//extern struct thread * pid_array[PID_MAX];
+//extern struct Proc * process_table[PID_MAX];
 
 struct Proc {
 

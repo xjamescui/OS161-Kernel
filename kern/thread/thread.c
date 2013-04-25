@@ -166,7 +166,8 @@ thread_create(const char *name)
 
   // Process syscall stuff
   // init's favourite song is Name (that and slide for me).
-  thread->ppid = -1;
+  thread->ppid = 2;
+  assign_pid(thread);
 
 	return thread;
 }
@@ -498,7 +499,6 @@ thread_fork(const char *name,
 	    struct thread **ret)
 {
 	struct thread *newthread;
-  //struct Proc *child;
 
 	newthread = thread_create(name);
 	if (newthread == NULL) {
@@ -538,10 +538,6 @@ thread_fork(const char *name,
 
 	/* Set up the switchframe so entrypoint() gets called */
 	switchframe_init(newthread, entrypoint, data1, data2);
-
-  //child = get_thread_by_pid(newthread->pid);
-
-  //child->ppid = curthread->pid;
 
 	/* Lock the current cpu's run queue and make the new thread runnable */
 	thread_make_runnable(newthread, false);
@@ -811,7 +807,6 @@ void
 thread_exit(void)
 {
 	struct thread *cur;
-  struct Proc *curp;
 	cur = curthread;
 
 	/* VFS fields */
@@ -836,12 +831,6 @@ thread_exit(void)
 
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
-
-  // Stuff for proc sys calls.
-  curp = get_process_by_pid(cur->pid);
-  // Bootstrap errors.
-  if (curp != NULL)
-    curp->exited = 1;
 
 	/* Interrupts off on this processor */
         splhigh();

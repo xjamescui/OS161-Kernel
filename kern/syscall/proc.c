@@ -56,7 +56,7 @@ int assign_pid(struct thread *new_thread) {
   entry->ppid = new_thread->ppid;
   entry->pid = pid;
   entry->exited = 0;
-  entry->exitcode = 1;
+  entry->exitcode = 0;
   entry->exit = sem_create("Child Sem", 0);
   entry->self = new_thread;
 
@@ -80,7 +80,10 @@ void free_this_pid(pid_t pid) {
 }
 
 struct Proc * get_process_by_pid(pid_t pid) {
-  return process_table[pid];
+  /*if (process_table[pid] == NULL)
+    return NULL;
+  else*/
+    return process_table[pid];
 }
 
 struct thread * get_thread_by_pid(pid_t pid) {
@@ -163,8 +166,6 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
   int errno;
   struct Proc *childp;
 
-  // WAITANY(-1) and WAITMYPGM(0) are not supported?
-
   if (options != 0) {
     errno = EINVAL;
     return -1;
@@ -189,16 +190,17 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
   }
 
   // Check that the parent is waiting on the child
-  /*if (childp->ppid != curthread->pid) {
+  if (childp->ppid != curthread->pid) {
     errno = ECHILD;
     return -1;
-  }*/
+  }
 
   if (childp->exited == 0) {
       P(childp->exit);
   }
 
-  *status = childp->exitcode;
+  //*status = childp->exitcode; Gaaaaah.
+  copyout(&childp->exitcode, (userptr_t)status, sizeof(int));
 
   *retval = pid;
 
@@ -323,7 +325,8 @@ void sys__exit(int exitcode) {
   }
 
   // What?! I'm Agent Smith?!
-  enter_new_process(argc, NULL //userspace addr of argv, userstk, entrypoint);
+  //userspace addr of argv
+  enter_new_process(argc, NULL, userstk, entrypoint);
 
   panic("enter_new_process returned. Fusion failed.\n");
   return EINVAL;

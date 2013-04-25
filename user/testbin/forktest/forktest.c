@@ -91,7 +91,7 @@ check(void)
 /*
  * Wait for a child process.
  *
- * This assumes dowait is called the same number of times as dofork
+ * This assumes dowait is called the same number of times as docfork
  * and passed its results in reverse order. Any forks that fail send
  * us -1 and are ignored. The first 0 we see indicates the fork that
  * generated the current process; that means it's time to exit. Only
