@@ -25,6 +25,7 @@
 #include <uio.h>
 #include <synch.h>
 #include <kern/wait.h>
+#include <syscall.h>
 
 #define ARGSIZE 20
 
@@ -40,12 +41,15 @@ int assign_pid(struct thread *new_thread) {
   int errno;
   struct Proc *entry;
 
+  //a = splhigh();
+
   pid = PID_MIN;
   while (process_table[pid] != NULL)
     pid++;
 
   if (pid == PID_MAX) {
     errno = ENPROC;
+    //splx(a);
     return -1;
   }
 
@@ -62,12 +66,17 @@ int assign_pid(struct thread *new_thread) {
 
   process_table[pid] = entry;
 
+  //splx(a);
+
   return pid;
 }
 
 void free_this_pid(pid_t pid) {
 
   struct Proc *proc;
+  int a;
+
+  a = splhigh();
 
   proc = get_process_by_pid(pid);
 
@@ -77,12 +86,11 @@ void free_this_pid(pid_t pid) {
     kfree(process_table[pid]);
     process_table[pid] = NULL;
   }
+
+  splx(a);
 }
 
 struct Proc * get_process_by_pid(pid_t pid) {
-  /*if (process_table[pid] == NULL)
-    return NULL;
-  else*/
     return process_table[pid];
 }
 
@@ -212,6 +220,9 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 void sys__exit(int exitcode) {
 
   struct Proc *childp, *parentp;
+  int a;
+
+  a = splhigh();
 
   if (curthread->ppid >= 2) {
 
@@ -232,65 +243,35 @@ void sys__exit(int exitcode) {
     }
   }
 
+  splx(a);
+
   thread_exit();
 }
 
 //int execv(const char *program, char **args);
-/*int sys_execv(const char *program, char **args, int *retval) {
+int sys_execv(const char *program, char **args) {
 
   // #define ARGSIZE 20
 
-  int argc, size, result, temp, i, j, pad;
-  size_t *actual;
-  char **kargs, *ptr, *name, **pack;
+  int argc, result, temp, i, errno;
+  size_t size;//, actual;
+  char *kargs, *ptr, *name, *userptrs[10];
   struct vnode *vn;
   vaddr_t entrypoint, userstk;
 
   // There wan't a problem with this in file name copy
   // and I therefore suspect there isn't one here.
-
   // what happens to the case where the first argument is
   // the program name?
 
-  // Get the ags in and pad them.
-  argc = 0;
-  while (1) {
-
-    if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char *)))) {
-      errno = EFAULT;
-      return result;
-    }
-
-    if (ptr == NULL)
-      break;
-
-    kargs[argc] = kmalloc(sizeof(char) * ARGSIZE);
-
-    if((result = copyinstr((const_userptr_t)args[argc], kargs[argc], ARGSIZE, actual))) {
-      errno = E2BIG;
-      return result;
-    }
-
-    temp = strlen(kargs[argc]) + 1;
-    temp += (temp % 4);
-    pad[argc] = kmalloc(sizeof(char) * temp);
-    pad[argc] = kargs[argc];
-    for (i = strlen(kargs[argc]) + 1; i < temp; i++)
-      pad[argc][i] = '\0';
-
-    argc++;
-  }
-
-  kargs[argc + 1] = NULL;
-  pad[argc + 1] = NULL;
-
+  (void)program;
   // Check valid program.
-  if ((result = copyinstr((const_userptr_t)program, name, 100, actual))) {
+  /*if ((result = copyinstr((const_userptr_t)program, name, 100, actual))) {
     errno = ENOENT;
     return result;
-  }
-
+  }*/
   // Get the program into memory.
+  name = kstrdup(program);
   if ((result = vfs_open(name, O_RDONLY, 0, &vn))) {
     return result;
   }
@@ -319,15 +300,76 @@ void sys__exit(int exitcode) {
     return result;
   }
 
-  //copyout the stack.
-  if((result = copyout(const void *src, userptr_t userdest, size_t len))) {
-    return result;
+  // TODO prog_thread as runprogram. You need runprogram to call the a modified execv to handle kernel calls.
+
+  // Get the ags in and pad them.
+  argc = 0;
+  size = 0;
+  while (1) {
+
+    ptr = (char *)kmalloc(sizeof(char));
+    // Use ptr
+    /*if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char)))) {
+      errno = EFAULT;
+      return result;
+    }
+    if (ptr == NULL)
+      break;*/
+    // TODO Kludge in place of copyin. Make sure the copyin's happen properly.
+    if (args[argc] == NULL) {
+
+      userstk -= 4 * sizeof(char);
+
+      // Not needed. Just update the pointer.
+      /*if((result = copyout((const void *)args[argc], (userptr_t)userstk, sizeof(char)))) {
+        return result;
+      }*/
+      break;
+    }
+
+    ptr = kstrdup(args[argc]); // *(args + argc)
+
+    kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
+
+    // Use ptr
+    /*if((result = copyinstr((const_userptr_t)args[argc], kargs argc], ARGSIZE, actual))) {
+      errno = E2BIG;
+      return result;
+    }*/
+
+    kargs = kstrdup(ptr);
+
+    // Pad.
+    temp = strlen(kargs) + 1;
+    temp += (4 - (temp % 4));
+    for (i = strlen(kargs) + 1; i < temp; i++)
+      kargs[i] = '\0';
+
+    // Move the stakptr;
+    userstk -= temp;
+
+    //copyout the arg to stack.
+    if((result = copyout((const void *)kargs , (userptr_t)userstk, temp))) {
+      return result;
+    }
+
+    userptrs[argc] = (char *)userstk;
+
+    argc++;
+  }
+
+  // Pack the user pointers into the user stack.
+  for (i = argc - 1; i >= 0; i--) {
+
+    if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(userstk)))) {
+      return result;
+    }
+    userstk -= 4;
   }
 
   // What?! I'm Agent Smith?!
-  //userspace addr of argv
-  enter_new_process(argc, NULL, userstk, entrypoint);
+  enter_new_process(argc, (userptr_t)userstk, userstk, entrypoint);
 
   panic("enter_new_process returned. Fusion failed.\n");
   return EINVAL;
-}*/
+}

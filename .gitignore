@@ -12,3 +12,4 @@ build
 .vimrc
 kern/thread/or
 *.swn
+tags
