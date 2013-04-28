@@ -355,16 +355,19 @@ int sys_execv(const char *program, char **args) {
 
     userptrs[argc] = (char *)userstk;
 
+    kprintf("kargv[%d]: %p - %s\n", argc, (void *)userstk, userptrs[argc]);
+
     argc++;
   }
 
   // Pack the user pointers into the user stack.
   for (i = argc - 1; i >= 0; i--) {
 
-    if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(userstk)))) {
+    //if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(char *)))) { :| :/
+    if((result = copyout((const void *)(userptrs + i) , (userptr_t)userstk, sizeof(char *)))) {
       return result;
     }
-    userstk -= 4;
+    userstk -= sizeof(char *);
   }
 
   // What?! I'm Agent Smith?!

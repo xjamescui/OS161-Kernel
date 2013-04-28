@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,18 +40,21 @@
 int
 main(int argc, char *argv[])
 {
-	const char *tmp;
-	int i;
+  const char *temp;
+  char *ptr;
+  int i;
 
-	printf("argc: %d\n", argc);
+  printf("argc: %d\n", argc);
 
-	for (i=0; i<=argc; i++) {
-		tmp = argv[i];
-		if (tmp==NULL) {
-			tmp = "[NULL]";
-		}
-		printf("argv[%d]: %s\n", i, tmp);
-	}
+  for (i=0; i<=argc; i++) {
+    temp = argv[i];
+    if (temp==NULL) {
+      temp = "[NULL]";
+    }
+    ptr = (char *)(argv + i);
+    //printf("argv[%d]: %s\n", i, temp);
+    printf("argv[%d]: %p - %s\n", i, ptr, temp);
+  }
 
-	return 0;
+  return 0;
 }
