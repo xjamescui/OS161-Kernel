@@ -56,11 +56,11 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname)
+runprogram(char *progname, char **args)
 {
   struct vnode *v;
   int argc, result, temp, i;
-  char *kargs, *ptr, *name, *userptrs[10];
+  char *kargs, *name, *userptrs[10] , *ptr;
   vaddr_t entrypoint, userstk;
 
   /* Open the file. */
@@ -101,36 +101,50 @@ runprogram(char *progname)
     return result;
   }
 
-  // Get the ags in and pad them.
+
   argc = 0;
-  kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
-  kargs = kstrdup(progname);
-  temp = strlen(kargs) + 1;
-  temp += (4 - (temp % 4));
-  for (i = strlen(kargs) + 1; i < temp; i++)
-   kargs[i] = '\0';
+  while (1) {
 
-  // Move the stakptr;
-  userstk -= temp;
+    ptr = (char *)kmalloc(sizeof(char));
 
-  //copyout the arg to stack.
-  if((result = copyout((const void *)kargs , (userptr_t)userstk, temp))) {
-    return result;
+    if (args[argc] == NULL) {
+      userstk -= 4 * sizeof(char);
+      break;
+    }
+    ptr = kstrdup(args[argc]);
+
+    kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
+    kargs = kstrdup(ptr);
+
+    temp = strlen(kargs) + 1;
+    temp += (4 - (temp % 4));
+    for (i = strlen(kargs) + 1; i < temp; i++)
+      kargs[i] = '\0';
+
+    // Move the stakptr;
+    userstk -= temp;
+
+    //copyout the arg to stack.
+    if((result = copyout((const void *)kargs , (userptr_t)userstk, temp))) {
+      return result;
+    }
+
+    userptrs[argc] = (char *)userstk;
+
+    argc++;
   }
-
-  userptrs[argc] = (char *)userstk;
-
-
-  // The NULL Dudes.
-  userstk -= 4 * sizeof(char);
-
-  // The actual pointer.
-  userstk -= sizeof(char *);
 
   // Pack the user pointers into the user stack.
-  if((result = copyout((const void *)(userptrs + i) , (userptr_t)userstk, sizeof(char *)))) {
-    return result;
+  for (i = argc - 1; i >= 0; i--) {
+
+    userstk -= sizeof(char *);
+
+    //if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(char *)))) { :| :/
+    if((result = copyout((const void *)(userptrs + i) , (userptr_t)userstk, sizeof(char *)))) {
+      return result;
+    }
   }
+
 
   // What?! I'm Agent Smith?!
   enter_new_process(argc, (userptr_t)userstk, userstk, entrypoint);

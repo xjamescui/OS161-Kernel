@@ -96,13 +96,15 @@ cmd_progthread(void *ptr, unsigned long nargs)
 
   strcpy(progname, args[0]);
 
-  if (nargs > 2) {
+  if (nargs == 1) {
+    args[1] = NULL;
+  }
+
+  /*if (nargs > 2) {
     //kprintf("Warning: argument passing from menu not supported\n");
-    result = sys_execv(progname, args);
-  }
-  else {
-    result = runprogram(progname);
-  }
+  }*/
+
+  result = runprogram(progname, args);
 
   if (result) {
     kprintf("Running program %s failed: %s\n", args[0],
@@ -399,7 +401,7 @@ showmenu(const char *name, const char *x[])
 
   kprintf("\n");
   kprintf("%s\n", name);
-  
+
   for (i=ct=0; x[i]; i++) {
     ct++;
   }
@@ -554,7 +556,7 @@ static struct {
   { "sy2",  locktest },
   { "sy3",  cvtest },
   { "sy5",  cvtest2 },
-  
+
 #if OPT_SYNCHPROBS
   /* synchronization problem tests */
   { "sp1", whalemating },

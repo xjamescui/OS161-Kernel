@@ -254,7 +254,7 @@ int sys_execv(const char *program, char **args) {
   // #define ARGSIZE 20
 
   int argc, result, temp, i, errno;
-  size_t size;//, actual;
+  //size_t actual;
   char *kargs, *ptr, *name, *userptrs[10];
   struct vnode *vn;
   vaddr_t entrypoint, userstk;
@@ -304,7 +304,6 @@ int sys_execv(const char *program, char **args) {
 
   // Get the ags in and pad them.
   argc = 0;
-  size = 0;
   while (1) {
 
     ptr = (char *)kmalloc(sizeof(char));
@@ -355,7 +354,7 @@ int sys_execv(const char *program, char **args) {
 
     userptrs[argc] = (char *)userstk;
 
-    kprintf("kargv[%d]: %p - %s\n", argc, (void *)userstk, userptrs[argc]);
+    //kprintf("kargv[%d]: %p - %s\n", argc, (void *)userstk, userptrs[argc]);
 
     argc++;
   }
