@@ -363,11 +363,12 @@ int sys_execv(const char *program, char **args) {
   // Pack the user pointers into the user stack.
   for (i = argc - 1; i >= 0; i--) {
 
+    userstk -= sizeof(char *);
+
     //if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(char *)))) { :| :/
     if((result = copyout((const void *)(userptrs + i) , (userptr_t)userstk, sizeof(char *)))) {
       return result;
     }
-    userstk -= sizeof(char *);
   }
 
   // What?! I'm Agent Smith?!
