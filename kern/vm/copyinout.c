@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -99,7 +99,7 @@ static
 void
 copyfail(void)
 {
-	longjmp(curthread->t_machdep.tm_copyjmp, 1);
+  longjmp(curthread->t_machdep.tm_copyjmp, 1);
 }
 
 /*
@@ -117,29 +117,29 @@ static
 int
 copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 {
-	vaddr_t bot, top;
+  vaddr_t bot, top;
 
-	*stoplen = len;
+  *stoplen = len;
 
-	bot = (vaddr_t) userptr;
-	top = bot+len-1;
+  bot = (vaddr_t) userptr;
+  top = bot+len-1;
 
-	if (top < bot) {
-		/* addresses wrapped around */
-		return EFAULT;
-	}
+  if (top < bot) {
+    /* addresses wrapped around */
+    return EFAULT;
+  }
 
-	if (bot >= USERSPACETOP) {
-		/* region is within the kernel */
-		return EFAULT;
-	}
+  if (bot >= USERSPACETOP) {
+    /* region is within the kernel */
+    return EFAULT;
+  }
 
-	if (top >= USERSPACETOP) {
-		/* region overlaps the kernel. adjust the max length. */
-		*stoplen = USERSPACETOP - bot;
-	}
+  if (top >= USERSPACETOP) {
+    /* region overlaps the kernel. adjust the max length. */
+    *stoplen = USERSPACETOP - bot;
+  }
 
-	return 0;
+  return 0;
 }
 
 /*
@@ -152,30 +152,30 @@ copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 int
 copyin(const_userptr_t usersrc, void *dest, size_t len)
 {
-	int result;
-	size_t stoplen;
+  int result;
+  size_t stoplen;
 
-	result = copycheck(usersrc, len, &stoplen);
-	if (result) {
-		return result;
-	}
-	if (stoplen != len) {
-		/* Single block, can't legally truncate it. */
-		return EFAULT;
-	}
+  result = copycheck(usersrc, len, &stoplen);
+  if (result) {
+    return result;
+  }
+  if (stoplen != len) {
+    /* Single block, can't legally truncate it. */
+    return EFAULT;
+  }
 
-	curthread->t_machdep.tm_badfaultfunc = copyfail;
+  curthread->t_machdep.tm_badfaultfunc = copyfail;
 
-	result = setjmp(curthread->t_machdep.tm_copyjmp);
-	if (result) {
-		curthread->t_machdep.tm_badfaultfunc = NULL;
-		return EFAULT;
-	}
+  result = setjmp(curthread->t_machdep.tm_copyjmp);
+  if (result) {
+    curthread->t_machdep.tm_badfaultfunc = NULL;
+    return EFAULT;
+  }
 
-	memcpy(dest, (const void *)usersrc, len);
+  memcpy(dest, (const void *)usersrc, len);
 
-	curthread->t_machdep.tm_badfaultfunc = NULL;
-	return 0;
+  curthread->t_machdep.tm_badfaultfunc = NULL;
+  return 0;
 }
 
 /*
@@ -188,30 +188,30 @@ copyin(const_userptr_t usersrc, void *dest, size_t len)
 int
 copyout(const void *src, userptr_t userdest, size_t len)
 {
-	int result;
-	size_t stoplen;
+  int result;
+  size_t stoplen;
 
-	result = copycheck(userdest, len, &stoplen);
-	if (result) {
-		return result;
-	}
-	if (stoplen != len) {
-		/* Single block, can't legally truncate it. */
-		return EFAULT;
-	}
+  result = copycheck(userdest, len, &stoplen);
+  if (result) {
+    return result;
+  }
+  if (stoplen != len) {
+    /* Single block, can't legally truncate it. */
+    return EFAULT;
+  }
 
-	curthread->t_machdep.tm_badfaultfunc = copyfail;
+  curthread->t_machdep.tm_badfaultfunc = copyfail;
 
-	result = setjmp(curthread->t_machdep.tm_copyjmp);
-	if (result) {
-		curthread->t_machdep.tm_badfaultfunc = NULL;
-		return EFAULT;
-	}
+  result = setjmp(curthread->t_machdep.tm_copyjmp);
+  if (result) {
+    curthread->t_machdep.tm_badfaultfunc = NULL;
+    return EFAULT;
+  }
 
-	memcpy((void *)userdest, src, len);
+  memcpy((void *)userdest, src, len);
 
-	curthread->t_machdep.tm_badfaultfunc = NULL;
-	return 0;
+  curthread->t_machdep.tm_badfaultfunc = NULL;
+  return 0;
 }
 
 /*
@@ -233,25 +233,25 @@ copyout(const void *src, userptr_t userdest, size_t len)
 static
 int
 copystr(char *dest, const char *src, size_t maxlen, size_t stoplen,
-	size_t *gotlen)
+  size_t *gotlen)
 {
-	size_t i;
+  size_t i;
 
-	for (i=0; i<maxlen && i<stoplen; i++) {
-		dest[i] = src[i];
-		if (src[i] == 0) {
-			if (gotlen != NULL) {
-				*gotlen = i+1;
-			}
-			return 0;
-		}
-	}
-	if (stoplen < maxlen) {
-		/* ran into user-kernel boundary */
-		return EFAULT;
-	}
-	/* otherwise just ran out of space */
-	return ENAMETOOLONG;
+  for (i=0; i<maxlen && i<stoplen; i++) {
+    dest[i] = src[i];
+    if (src[i] == 0) {
+      if (gotlen != NULL) {
+        *gotlen = i+1;
+      }
+      return 0;
+    }
+  }
+  if (stoplen < maxlen) {
+    /* ran into user-kernel boundary */
+    return EFAULT;
+  }
+  /* otherwise just ran out of space */
+  return ENAMETOOLONG;
 }
 
 /*
@@ -265,26 +265,26 @@ copystr(char *dest, const char *src, size_t maxlen, size_t stoplen,
 int
 copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *actual)
 {
-	int result;
-	size_t stoplen;
+  int result;
+  size_t stoplen;
 
-	result = copycheck(usersrc, len, &stoplen);
-	if (result) {
-		return result;
-	}
+  result = copycheck(usersrc, len, &stoplen);
+  if (result) {
+    return result;
+  }
 
-	curthread->t_machdep.tm_badfaultfunc = copyfail;
+  curthread->t_machdep.tm_badfaultfunc = copyfail;
 
-	result = setjmp(curthread->t_machdep.tm_copyjmp);
-	if (result) {
-		curthread->t_machdep.tm_badfaultfunc = NULL;
-		return EFAULT;
-	}
+  result = setjmp(curthread->t_machdep.tm_copyjmp);
+  if (result) {
+    curthread->t_machdep.tm_badfaultfunc = NULL;
+    return EFAULT;
+  }
 
-	result = copystr(dest, (const char *)usersrc, len, stoplen, actual);
+  result = copystr(dest, (const char *)usersrc, len, stoplen, actual);
 
-	curthread->t_machdep.tm_badfaultfunc = NULL;
-	return result;
+  curthread->t_machdep.tm_badfaultfunc = NULL;
+  return result;
 }
 
 /*
@@ -298,24 +298,24 @@ copyinstr(const_userptr_t usersrc, char *dest, size_t len, size_t *actual)
 int
 copyoutstr(const char *src, userptr_t userdest, size_t len, size_t *actual)
 {
-	int result;
-	size_t stoplen;
+  int result;
+  size_t stoplen;
 
-	result = copycheck(userdest, len, &stoplen);
-	if (result) {
-		return result;
-	}
+  result = copycheck(userdest, len, &stoplen);
+  if (result) {
+    return result;
+  }
 
-	curthread->t_machdep.tm_badfaultfunc = copyfail;
+  curthread->t_machdep.tm_badfaultfunc = copyfail;
 
-	result = setjmp(curthread->t_machdep.tm_copyjmp);
-	if (result) {
-		curthread->t_machdep.tm_badfaultfunc = NULL;
-		return EFAULT;
-	}
+  result = setjmp(curthread->t_machdep.tm_copyjmp);
+  if (result) {
+    curthread->t_machdep.tm_badfaultfunc = NULL;
+    return EFAULT;
+  }
 
-	result = copystr((char *)userdest, src, len, stoplen, actual);
+  result = copystr((char *)userdest, src, len, stoplen, actual);
 
-	curthread->t_machdep.tm_badfaultfunc = NULL;
-	return result;
+  curthread->t_machdep.tm_badfaultfunc = NULL;
+  return result;
 }

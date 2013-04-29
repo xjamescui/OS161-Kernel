@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,32 +52,32 @@
 int
 main(int argc, char *argv[])
 {
-	int fd;
-	char readbuf[1];
-	int j = 0;
+  int fd;
+  char readbuf[1];
+  int j = 0;
 
 #ifdef HOST
-	hostcompat_init(argc, argv);
+  hostcompat_init(argc, argv);
 #endif
 
-	if (argc != 2) {
-		errx(1, "Usage: hash filename");
-	}
-	
-	fd = open(argv[1], O_RDONLY, 0664);
-	
-	if (fd<0) { 
-		err(1, "%s", argv[1]);
-	}
+  if (argc != 2) {
+    errx(1, "Usage: hash filename");
+  }
 
-	for (;;) {
-		if (read(fd, readbuf, 1) <= 0) break;
-		j = ((j*8) + (int) readbuf[0]) % HASHP;
-	}
+  fd = open(argv[1], O_RDONLY, 0664);
 
-	close(fd);
-	
-	printf("Hash : %d\n", j);
+  if (fd<0) {
+    err(1, "%s", argv[1]);
+  }
 
-	return 0;
+  for (;;) {
+    if (read(fd, readbuf, 1) <= 0) break;
+    j = ((j*8) + (int) readbuf[0]) % HASHP;
+  }
+
+  close(fd);
+
+  printf("Hash : %d\n", j);
+
+  return 0;
 }

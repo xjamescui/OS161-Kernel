@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,32 +45,32 @@ static paddr_t lastpaddr;   /* one past end of last free physical page */
 void
 ram_bootstrap(void)
 {
-	size_t ramsize;
-	
-	/* Get size of RAM. */
-	ramsize = mainbus_ramsize();
+  size_t ramsize;
+  
+  /* Get size of RAM. */
+  ramsize = mainbus_ramsize();
 
-	/*
-	 * This is the same as the last physical address, as long as
-	 * we have less than 508 megabytes of memory. If we had more,
-	 * various annoying properties of the MIPS architecture would
-	 * force the RAM to be discontiguous. This is not a case we 
-	 * are going to worry about.
-	 */
-	if (ramsize > 508*1024*1024) {
-		ramsize = 508*1024*1024;
-	}
+  /*
+   * This is the same as the last physical address, as long as
+   * we have less than 508 megabytes of memory. If we had more,
+   * various annoying properties of the MIPS architecture would
+   * force the RAM to be discontiguous. This is not a case we 
+   * are going to worry about.
+   */
+  if (ramsize > 508*1024*1024) {
+    ramsize = 508*1024*1024;
+  }
 
-	lastpaddr = ramsize;
+  lastpaddr = ramsize;
 
-	/* 
-	 * Get first free virtual address from where start.S saved it.
-	 * Convert to physical address.
-	 */
-	firstpaddr = firstfree - MIPS_KSEG0;
+  /* 
+   * Get first free virtual address from where start.S saved it.
+   * Convert to physical address.
+   */
+  firstpaddr = firstfree - MIPS_KSEG0;
 
-	kprintf("%uk physical memory available\n", 
-		(lastpaddr-firstpaddr)/1024);
+  kprintf("%uk physical memory available\n", 
+    (lastpaddr-firstpaddr)/1024);
 }
 
 /*
@@ -94,19 +94,19 @@ ram_bootstrap(void)
 paddr_t
 ram_stealmem(unsigned long npages)
 {
-	size_t size;
-	paddr_t paddr;
+  size_t size;
+  paddr_t paddr;
 
-	size = npages * PAGE_SIZE;
+  size = npages * PAGE_SIZE;
 
-	if (firstpaddr + size > lastpaddr) {
-		return 0;
-	}
+  if (firstpaddr + size > lastpaddr) {
+    return 0;
+  }
 
-	paddr = firstpaddr;
-	firstpaddr += size;
+  paddr = firstpaddr;
+  firstpaddr += size;
 
-	return paddr;
+  return paddr;
 }
 
 /*
@@ -120,7 +120,7 @@ ram_stealmem(unsigned long npages)
 void
 ram_getsize(paddr_t *lo, paddr_t *hi)
 {
-	*lo = firstpaddr;
-	*hi = lastpaddr;
-	firstpaddr = lastpaddr = 0;
+  *lo = firstpaddr;
+  *hi = lastpaddr;
+  firstpaddr = lastpaddr = 0;
 }

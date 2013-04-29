@@ -107,7 +107,7 @@ runprogram(char *progname, char **args)
 
     ptr = (char *)kmalloc(sizeof(char));
 
-    if (args[argc] == NULL) {
+    if (args[argc] == NULL || args[argc] == "\b") {
       userstk -= 4 * sizeof(char);
       break;
     }

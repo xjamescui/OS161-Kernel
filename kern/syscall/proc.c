@@ -254,7 +254,7 @@ int sys_execv(const char *program, char **args) {
   // #define ARGSIZE 20
 
   int argc, result, temp, i, errno;
-  //size_t actual;
+  size_t actual;
   char *kargs, *ptr, *name, *userptrs[10];
   struct vnode *vn;
   vaddr_t entrypoint, userstk;
@@ -264,14 +264,13 @@ int sys_execv(const char *program, char **args) {
   // what happens to the case where the first argument is
   // the program name?
 
-  (void)program;
   // Check valid program.
-  /*if ((result = copyinstr((const_userptr_t)program, name, 100, actual))) {
+  if ((result = copyinstr((const_userptr_t)program, name, 100, &actual))) {
     errno = ENOENT;
     return result;
-  }*/
+  }
   // Get the program into memory.
-  name = kstrdup(program);
+  //name = kstrdup(program);
   if ((result = vfs_open(name, O_RDONLY, 0, &vn))) {
     return result;
   }
@@ -300,22 +299,17 @@ int sys_execv(const char *program, char **args) {
     return result;
   }
 
-  // TODO prog_thread as runprogram. You need runprogram to call the a modified execv to handle kernel calls.
-
   // Get the ags in and pad them.
   argc = 0;
   while (1) {
 
     ptr = (char *)kmalloc(sizeof(char));
     // Use ptr
-    /*if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char)))) {
+    if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char)))) {
       errno = EFAULT;
       return result;
     }
-    if (ptr == NULL)
-      break;*/
-    // TODO Kludge in place of copyin. Make sure the copyin's happen properly.
-    if (args[argc] == NULL) {
+    if (ptr == NULL) {
 
       userstk -= 4 * sizeof(char);
 
@@ -326,17 +320,13 @@ int sys_execv(const char *program, char **args) {
       break;
     }
 
-    ptr = kstrdup(args[argc]); // *(args + argc)
-
     kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
 
     // Use ptr
-    /*if((result = copyinstr((const_userptr_t)args[argc], kargs argc], ARGSIZE, actual))) {
+    if((result = copyinstr((const_userptr_t)args[argc], kargs, ARGSIZE, &actual))) {
       errno = E2BIG;
       return result;
-    }*/
-
-    kargs = kstrdup(ptr);
+    }
 
     // Pad.
     temp = strlen(kargs) + 1;
