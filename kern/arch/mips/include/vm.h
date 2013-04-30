@@ -2,13 +2,13 @@
 #define _MIPS_VM_H_
 
 // Virtual page struct.
-struct Page {
+/*struct Page {
 
   struct addrspace Page_addr; // The addrspace the page is mapped to.
   paddr_t Page_ppage; // The physical equivalent.
   int Page_state; // Fixed - 0, Free - 1, Dirty - 2, Clean - 3
   time_t Page_timestamp; // For eviction.
-};
+};*/
 
 
 /*
