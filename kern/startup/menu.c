@@ -100,6 +100,9 @@ cmd_progthread(void *ptr, unsigned long nargs)
     args[1] = NULL;
   }
 
+  // NULL the last pointer.
+  args[nargs] = NULL;
+
   /*if (nargs > 2) {
     //kprintf("Warning: argument passing from menu not supported\n");
   }*/

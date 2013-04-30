@@ -38,6 +38,8 @@
 #include <addrspace.h>
 #include <vm.h>
 
+// TODO write shit here until you move it somewhere else.
+
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
  * enough to struggle off the ground. You should replace all of this
@@ -53,10 +55,25 @@
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
+
+/*ram_getsize(&firstaddr, &lastaddr); 
+page_num = ROUNDDOWN(lastaddr, PAGE_SIZE) / PAGE_SIZE; 
+// pages should be a kernel virtual address !!
+pages = (struct page*)PADDR_TO_KVADDR(firstaddr); 
+freeaddr = firstaddr + page_num * sizeof(struct page); */
+
 void
 vm_bootstrap(void)
 {
   /* Do nothing. */
+
+  // Start theomegavm
+
+  /*paddr_t start, end;
+
+  ram_getsize*/
+
+  // End theomegavm
 }
 
 static
