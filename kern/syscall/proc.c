@@ -81,7 +81,6 @@ void free_this_pid(pid_t pid) {
   proc = get_process_by_pid(pid);
 
   if (proc != NULL) {
-
     sem_destroy(proc->exit);
     kfree(process_table[pid]);
     process_table[pid] = NULL;

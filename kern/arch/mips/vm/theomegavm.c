@@ -1,32 +1,3 @@
-/*
- * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *  The President and Fellows of Harvard College.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE UNIVERSITY AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE UNIVERSITY OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
-
 #include <types.h>
 #include <kern/errno.h>
 #include <lib.h>
@@ -38,12 +9,7 @@
 #include <addrspace.h>
 #include <vm.h>
 
-/*
- * Dumb MIPS-only "VM system" that is intended to only be just barely
- * enough to struggle off the ground. You should replace all of this
- * code while doing the VM assignment. In fact, starting in that
- * assignment, this file is not included in your kernel!
- */
+// The last VM you'll ever need.
 
 /* under dumbvm, always have 48k of user stack */
 #define DUMBVM_STACKPAGES    12
@@ -53,35 +19,67 @@
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
-void
-vm_bootstrap(void)
-{
-  /* Do nothing. */
+// startaddr is the start of the memlocation. freeaddr is the start
+// of the available pages.
+static paddr_t startaddr, endaddr, freeaddr, curfreeaddr;
+
+static struct Page *coremap;
+
+int theomegavm_init;
+
+// Setup Mon flying coremap, map, map, map, map.
+// The next free page is at curfreeaddr + PAGE_SIZE.
+void vm_bootstrap(void) {
+
+  int page_num;
+  struct Page *pages;
+
+  ram_getsize(&startaddr, &endaddr);
+
+  page_num = end / PAGE_SIZE;
+
+  pages = (struct Page *) PADDR_TO_KVADDR(startaddr);
+
+  freeaddr = startaddr + page_num * sizeof(struct page);
+
+  curfreeaddr = freeaddr;
+
+  theomegavm_init = 1;
 }
 
-static
-paddr_t
-getppages(unsigned long npages)
-{
-  paddr_t addr;
+static paddr_t getppages(unsigned long npages) {
 
-  spinlock_acquire(&stealmem_lock);
+  paddr_t newaddr;
+  int a;
 
-  addr = ram_stealmem(npages);
+  //spinlock_acquire(&stealmem_lock);
 
-  spinlock_release(&stealmem_lock);
-  return addr;
+  // If the curfree exceeds endaddr, then I guess you'd have to call
+  // free page or something like that? The interrupts are disabled as it is.
+
+  a = splhigh();
+
+  newaddr = curfreeaddr;
+
+  curfreeaddr = curfreeaddr + npages * PAGE_SIZE;
+
+  splx(a);
+
+  //spinlock_release(&stealmem_lock);
+  return newaddr;
 }
 
 /* Allocate/free some kernel-space virtual pages */
-vaddr_t
-alloc_kpages(int npages)
+vaddr_t alloc_kpages(int npages)
 {
   paddr_t pa;
+
   pa = getppages(npages);
-  if (pa==0) {
+
+  if (pa == 0) {
     return 0;
   }
+
   return PADDR_TO_KVADDR(pa);
 }
 
@@ -368,7 +366,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
   memmove((void *)PADDR_TO_KVADDR(new->as_stackpbase),
     (const void *)PADDR_TO_KVADDR(old->as_stackpbase),
     DUMBVM_STACKPAGES*PAGE_SIZE);
-  
+
   *ret = new;
   return 0;
 }
