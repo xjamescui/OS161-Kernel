@@ -78,34 +78,43 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
   KASSERT(code < NTRAPCODES);
   switch (code) {
       case EX_IRQ:
+        sig = SIGINT;
+        break;
       case EX_IBE:
+        sig = SIGBUS;
+        break;
       case EX_DBE:
+        sig = SIGBUS;
+        break;
       case EX_SYS:
-    /* should not be seen */
-    KASSERT(0);
-    sig = SIGABRT;
-    break;
-      case EX_MOD:
+        /* should not be seen */
+        KASSERT(0);
+        sig = SIGABRT;
+        break;
+      case EX_MOD: // Write these.
       case EX_TLBL:
       case EX_TLBS:
-    sig = SIGSEGV;
-    break;
-      case EX_ADEL:
+        sig = SIGSEGV;
+        break;
+      case EX_ADEL: // Write these.
       case EX_ADES:
-    sig = SIGBUS;
-    break;
+        sig = SIGBUS;
+        break;
       case EX_BP:
-    sig = SIGTRAP;
-    break;
+        sig = SIGTRAP;
+        break;
       case EX_RI:
-    sig = SIGILL;
-    break;
+        sig = SIGILL;
+        break;
       case EX_CPU:
-    sig = SIGSEGV;
-    break;
+        sig = SIGSEGV;
+        break;
       case EX_OVF:
-    sig = SIGFPE;
-    break;
+        sig = SIGFPE;
+        break;
+      default:
+        sig = SIGKILL;
+        break;
   }
 
   /*
