@@ -176,10 +176,10 @@ struct lock *flow_lock;
 
 void stoplight_init() {
 
-  zero = sem_create("Zero", 1);
+  /*zero = sem_create("Zero", 1);
   one = sem_create("One", 1);
   two = sem_create("Two", 1);
-  three = sem_create("Three", 1);
+  three = sem_create("Three", 1);*/
 
   flow_lock = lock_create("Stoplight Flow Lock");
 
@@ -191,10 +191,10 @@ void stoplight_init() {
 
 void stoplight_cleanup() {
 
-  sem_destroy(zero);
+  /*sem_destroy(zero);
   sem_destroy(one);
   sem_destroy(two);
-  sem_destroy(three);
+  sem_destroy(three);*/
 
   lock_destroy(flow_lock);
 
@@ -233,19 +233,17 @@ gostraight(void *p, unsigned long direction)
     // X
     lock_acquire(flow_lock);
     opr++;
-    P(toSem(direction));
+    //P(toSem(direction));
     inQuadrant(direction);
     prev = direction;
     direction = (direction + 3) % 4;
-  //  lock_release(flow_lock);
   }
 
   while (opr < 3) {
-//    lock_acquire(flow_lock);
     opr++;
-    P(toSem(direction)); 
+    //P(toSem(direction)); 
     inQuadrant(direction);
-    V(toSem(prev));
+    //V(toSem(prev));
     prev = direction;
 
     if (opr == 2) {
@@ -285,7 +283,7 @@ turnleft(void *p, unsigned long direction)
   if (!opr) {
     lock_acquire(flow_lock);
     opr++;
-    P(toSem(direction));
+    //P(toSem(direction));
     inQuadrant(direction);
     prev = direction;
     direction = (direction + 3) % 4;
@@ -293,12 +291,11 @@ turnleft(void *p, unsigned long direction)
   }
 
   while (opr < 4) {
-    // Put a lock here.
-  //  lock_acquire(flow_lock);
+    // lock_acquire(flow_lock);
     opr++;
-    P(toSem(direction));
+    //P(toSem(direction));
     inQuadrant(direction);
-    V(toSem(prev));
+    //V(toSem(prev));
     prev = direction;
 
     if (opr == 2) {
@@ -330,16 +327,16 @@ turnright(void *p, unsigned long direction)
   long prev;
 
   lock_acquire(flow_lock);
-  P(toSem(direction));
+  //P(toSem(direction));
   inQuadrant(direction);
   prev = direction;
   direction = (direction + 3) % 4;
 //  lock_release(flow_lock);
   
 //  lock_acquire(flow_lock);
-  P(toSem(direction));
+  //P(toSem(direction));
   inQuadrant(direction);
-  V(toSem(prev));
+  //V(toSem(prev));
   lock_release(flow_lock);
   
   leaveIntersection();

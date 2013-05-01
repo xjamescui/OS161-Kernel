@@ -11,5 +11,9 @@ build
 *.swo
 .vimrc
 kern/thread/or
+<<<<<<< HEAD
 *.swn
 tags
+=======
+*.patch
+>>>>>>> 92e6e44b190e8722d83e0f015683f57f0bd0b2ad
