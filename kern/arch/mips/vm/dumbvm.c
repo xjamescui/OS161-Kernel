@@ -368,7 +368,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
   memmove((void *)PADDR_TO_KVADDR(new->as_stackpbase),
     (const void *)PADDR_TO_KVADDR(old->as_stackpbase),
     DUMBVM_STACKPAGES*PAGE_SIZE);
-  
+
   *ret = new;
   return 0;
 }

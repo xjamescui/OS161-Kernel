@@ -17,7 +17,7 @@
 /*
  * Wrap rma_stealmem in a spinlock.
  */
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 // startaddr is the start of the memlocation. freeaddr is the start
 // of the available pages.
@@ -25,45 +25,67 @@ static paddr_t startaddr, endaddr, freeaddr, curfreeaddr;
 
 static struct Page *coremap;
 
-int theomegavm_init;
+int theomegavm_init = 0;
 
 // Setup Mon flying coremap, map, map, map, map.
 // The next free page is at curfreeaddr + PAGE_SIZE.
 void vm_bootstrap(void) {
 
-  int page_num;
-  struct Page *pages;
+  int page_num, i;
+  struct Page curaddr;
 
   ram_getsize(&startaddr, &endaddr);
 
-  page_num = end / PAGE_SIZE;
+  page_num = endaddr / PAGE_SIZE;
 
-  pages = (struct Page *) PADDR_TO_KVADDR(startaddr);
+  freeaddr = startaddr + page_num * sizeof(struct Page);
 
-  freeaddr = startaddr + page_num * sizeof(struct page);
+  coremap = (struct Page *)PADDR_TO_KVADDR(startaddr);
 
-  curfreeaddr = freeaddr;
+  // Setup the coremap.
+  //page_num = 2;
+  /*for (i = page_num; i > 0; i--) {
+    curaddr.ppage = freeaddr + PAGE_SIZE * i;
+    curaddr.state = 1;
+    coremap[i] = curaddr;
+
+  }*/
+
+  i = 0;
+  while (i < 100) {
+    curaddr.ppage = freeaddr + PAGE_SIZE * i;
+    curaddr.state = 1;
+    coremap[i] = curaddr;
+    i++;
+  }
 
   theomegavm_init = 1;
 }
 
+// Allocate a block of pages.
+// This guy should be compacting pages.
 static paddr_t getppages(unsigned long npages) {
 
   paddr_t newaddr;
-  int a;
+  //int a;
 
   //spinlock_acquire(&stealmem_lock);
 
-  // If the curfree exceeds endaddr, then I guess you'd have to call
-  // free page or something like that? The interrupts are disabled as it is.
+  if (!theomegavm_init) {
+    vm_bootstrap();
+  }
 
-  a = splhigh();
+  //a = splhigh();
 
   newaddr = curfreeaddr;
 
   curfreeaddr = curfreeaddr + npages * PAGE_SIZE;
 
-  splx(a);
+  // Call cleanup crew.
+  /*if (curfreeaddr > endaddr) {
+  }*/
+
+  //splx(a);
 
   //spinlock_release(&stealmem_lock);
   return newaddr;
@@ -83,8 +105,8 @@ vaddr_t alloc_kpages(int npages)
   return PADDR_TO_KVADDR(pa);
 }
 
-void
-free_kpages(vaddr_t addr)
+// Compaction happens here?
+void free_kpages(vaddr_t addr)
 {
   /* nothing - leak the memory. */
 
@@ -197,7 +219,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   return EFAULT;
 }
 
-struct addrspace *
+/*struct addrspace *
 as_create(void)
 {
   struct addrspace *as = kmalloc(sizeof(struct addrspace));
@@ -229,7 +251,7 @@ as_activate(struct addrspace *as)
 
   (void)as;
 
-  /* Disable interrupts on this CPU while frobbing the TLB. */
+  // Disable interrupts on this CPU while frobbing the TLB.
   spl = splhigh();
 
   for (i=0; i<NUM_TLB; i++) {
@@ -243,18 +265,18 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
      int readable, int writeable, int executable)
 {
-  size_t npages; 
+  size_t npages;
 
-  /* Align the region. First, the base... */
+  // Align the region. First, the base...
   sz += vaddr & ~(vaddr_t)PAGE_FRAME;
   vaddr &= PAGE_FRAME;
 
-  /* ...and now the length. */
+  // ...and now the length.
   sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
 
   npages = sz / PAGE_SIZE;
 
-  /* We don't use these - all pages are read-write */
+  // We don't use these - all pages are read-write
   (void)readable;
   (void)writeable;
   (void)executable;
@@ -271,9 +293,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
     return 0;
   }
 
-  /*
-   * Support for more than two regions is not available.
-   */
+  // Support for more than two regions is not available.
   kprintf("dumbvm: Warning: too many regions\n");
   return EUNIMP;
 }
@@ -306,7 +326,7 @@ as_prepare_load(struct addrspace *as)
   if (as->as_stackpbase == 0) {
     return ENOMEM;
   }
-  
+
   as_zero_region(as->as_pbase1, as->as_npages1);
   as_zero_region(as->as_pbase2, as->as_npages2);
   as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
@@ -345,7 +365,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
   new->as_vbase2 = old->as_vbase2;
   new->as_npages2 = old->as_npages2;
 
-  /* (Mis)use as_prepare_load to allocate some physical memory. */
+  // (Mis)use as_prepare_load to allocate some physical memory.
   if (as_prepare_load(new)) {
     as_destroy(new);
     return ENOMEM;
@@ -369,4 +389,4 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 
   *ret = new;
   return 0;
-}
+}*/

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,58 +42,58 @@
 struct addrspace *
 as_create(void)
 {
-	struct addrspace *as;
+  struct addrspace *as;
 
-	as = kmalloc(sizeof(struct addrspace));
-	if (as == NULL) {
-		return NULL;
-	}
+  as = kmalloc(sizeof(struct addrspace));
+  if (as == NULL) {
+    return NULL;
+  }
 
-	/*
-	 * Initialize as needed.
-	 */
+  /*
+   * Initialize as needed.
+   */
 
-	return as;
+  return as;
 }
 
 int
 as_copy(struct addrspace *old, struct addrspace **ret)
 {
-	struct addrspace *newas;
+  struct addrspace *newas;
 
-	newas = as_create();
-	if (newas==NULL) {
-		return ENOMEM;
-	}
+  newas = as_create();
+  if (newas==NULL) {
+    return ENOMEM;
+  }
 
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)old;
-	
-	*ret = newas;
-	return 0;
+  (void)old;
+
+  *ret = newas;
+  return 0;
 }
 
 void
 as_destroy(struct addrspace *as)
 {
-	/*
-	 * Clean up as needed.
-	 */
-	
-	kfree(as);
+  /*
+   * Clean up as needed.
+   */
+
+  kfree(as);
 }
 
 void
 as_activate(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)as;  // suppress warning until code gets written
+  (void)as;  // suppress warning until code gets written
 }
 
 /*
@@ -108,55 +108,55 @@ as_activate(struct addrspace *as)
  */
 int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
-		 int readable, int writeable, int executable)
+     int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)as;
-	(void)vaddr;
-	(void)sz;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return EUNIMP;
+  (void)as;
+  (void)vaddr;
+  (void)sz;
+  (void)readable;
+  (void)writeable;
+  (void)executable;
+  return EUNIMP;
 }
 
 int
 as_prepare_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)as;
-	return 0;
+  (void)as;
+  return 0;
 }
 
 int
 as_complete_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)as;
-	return 0;
+  (void)as;
+  return 0;
 }
 
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	/*
-	 * Write this.
-	 */
+  /*
+   * Write this.
+   */
 
-	(void)as;
+  (void)as;
 
-	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;
-	
-	return 0;
+  /* Initial user-level stack pointer */
+  *stackptr = USERSTACK;
+
+  return 0;
 }
 

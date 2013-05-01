@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,33 +73,33 @@ struct mheader {
 #define MBLOCKSIZE 8
 #define MBLOCKSHIFT 3
 #define MMAGIC 2
-	/*
-	 * 32-bit platform. size_t is 32 bits (4 bytes). 
-	 * Block size is 8 bytes.
-	 */
-	unsigned mh_prevblock:29;
-	unsigned mh_pad:1;
-	unsigned mh_magic1:2;
+  /*
+   * 32-bit platform. size_t is 32 bits (4 bytes). 
+   * Block size is 8 bytes.
+   */
+  unsigned mh_prevblock:29;
+  unsigned mh_pad:1;
+  unsigned mh_magic1:2;
 
-	unsigned mh_nextblock:29;
-	unsigned mh_inuse:1;
-	unsigned mh_magic2:2;
+  unsigned mh_nextblock:29;
+  unsigned mh_inuse:1;
+  unsigned mh_magic2:2;
 
 #elif defined(MALLOC64)
 #define MBLOCKSIZE 16
 #define MBLOCKSHIFT 4
 #define MMAGIC 6
-	/*
-	 * 64-bit platform. size_t is 64 bits (8 bytes)
-	 * Block size is 16 bytes.
-	 */
-	unsigned mh_prevblock:62;
-	unsigned mh_pad:1;
-	unsigned mh_magic1:3;
+  /*
+   * 64-bit platform. size_t is 64 bits (8 bytes)
+   * Block size is 16 bytes.
+   */
+  unsigned mh_prevblock:62;
+  unsigned mh_pad:1;
+  unsigned mh_magic1:3;
 
-	unsigned mh_nextblock:62;
-	unsigned mh_inuse:1;
-	unsigned mh_magic2:3;
+  unsigned mh_nextblock:62;
+  unsigned mh_inuse:1;
+  unsigned mh_magic2:3;
 
 #else
 #error "please fix me"
@@ -109,29 +109,29 @@ struct mheader {
 /*
  * Operator macros on struct mheader.
  *
- * M_NEXT/PREVOFF:	return offset to next/previous header
- * M_NEXT/PREV:		return next/previous header
+ * M_NEXT/PREVOFF:  return offset to next/previous header
+ * M_NEXT/PREV:   return next/previous header
  * 
- * M_DATA:		return data pointer of a header
- * M_SIZE:		return data size of a header
+ * M_DATA:    return data pointer of a header
+ * M_SIZE:    return data size of a header
  *
- * M_OK:		true if the magic values are correct
+ * M_OK:    true if the magic values are correct
  * 
- * M_MKFIELD:		prepare a value for mh_next/prevblock.
- * 			(value should include the header size)
+ * M_MKFIELD:   prepare a value for mh_next/prevblock.
+ *      (value should include the header size)
  */
 
-#define M_NEXTOFF(mh)	((size_t)(((size_t)((mh)->mh_nextblock))<<MBLOCKSHIFT))
-#define M_PREVOFF(mh)	((size_t)(((size_t)((mh)->mh_prevblock))<<MBLOCKSHIFT))
-#define M_NEXT(mh)	((struct mheader *)(((char*)(mh))+M_NEXTOFF(mh)))
-#define M_PREV(mh)	((struct mheader *)(((char*)(mh))-M_PREVOFF(mh)))
+#define M_NEXTOFF(mh) ((size_t)(((size_t)((mh)->mh_nextblock))<<MBLOCKSHIFT))
+#define M_PREVOFF(mh) ((size_t)(((size_t)((mh)->mh_prevblock))<<MBLOCKSHIFT))
+#define M_NEXT(mh)  ((struct mheader *)(((char*)(mh))+M_NEXTOFF(mh)))
+#define M_PREV(mh)  ((struct mheader *)(((char*)(mh))-M_PREVOFF(mh)))
 
-#define M_DATA(mh)	((void *)((mh)+1))
-#define M_SIZE(mh)	(M_NEXTOFF(mh)-MBLOCKSIZE)
+#define M_DATA(mh)  ((void *)((mh)+1))
+#define M_SIZE(mh)  (M_NEXTOFF(mh)-MBLOCKSIZE)
 
-#define M_OK(mh)	((mh)->mh_magic1==MMAGIC && (mh)->mh_magic2==MMAGIC)
+#define M_OK(mh)  ((mh)->mh_magic1==MMAGIC && (mh)->mh_magic2==MMAGIC)
 
-#define M_MKFIELD(off)	((off)>>MBLOCKSHIFT)
+#define M_MKFIELD(off)  ((off)>>MBLOCKSHIFT)
 
 ////////////////////////////////////////////////////////////
 
@@ -147,59 +147,59 @@ static
 void
 __malloc_init(void)
 {
-	void *x;
+  void *x;
 
-	/*
-	 * Check various assumed properties of the sizes.
-	 */
-	if (sizeof(struct mheader) != MBLOCKSIZE) {
-		errx(1, "malloc: Internal error - MBLOCKSIZE wrong");
-	}
-	if ((MBLOCKSIZE & (MBLOCKSIZE-1))!=0) {
-		errx(1, "malloc: Internal error - MBLOCKSIZE not power of 2");
-	}
-	if (1<<MBLOCKSHIFT != MBLOCKSIZE) {
-		errx(1, "malloc: Internal error - MBLOCKSHIFT wrong");
-	}
+  /*
+   * Check various assumed properties of the sizes.
+   */
+  if (sizeof(struct mheader) != MBLOCKSIZE) {
+    errx(1, "malloc: Internal error - MBLOCKSIZE wrong");
+  }
+  if ((MBLOCKSIZE & (MBLOCKSIZE-1))!=0) {
+    errx(1, "malloc: Internal error - MBLOCKSIZE not power of 2");
+  }
+  if (1<<MBLOCKSHIFT != MBLOCKSIZE) {
+    errx(1, "malloc: Internal error - MBLOCKSHIFT wrong");
+  }
 
-	/* init should only be called once. */
-	if (__heapbase!=0 || __heaptop!=0) {
-		errx(1, "malloc: Internal error - bad init call");
-	}
+  /* init should only be called once. */
+  if (__heapbase!=0 || __heaptop!=0) {
+    errx(1, "malloc: Internal error - bad init call");
+  }
 
-	/* Use sbrk to find the base of the heap. */
-	x = sbrk(0);
-	if (x==(void *)-1) {
-		err(1, "malloc: initial sbrk failed");
-	}
-	if (x==(void *) 0) {
-		errx(1, "malloc: Internal error - heap began at 0");
-	}
-	__heapbase = __heaptop = (uintptr_t)x;
+  /* Use sbrk to find the base of the heap. */
+  x = sbrk(0);
+  if (x==(void *)-1) {
+    err(1, "malloc: initial sbrk failed");
+  }
+  if (x==(void *) 0) {
+    errx(1, "malloc: Internal error - heap began at 0");
+  }
+  __heapbase = __heaptop = (uintptr_t)x;
 
-	/*
-	 * Make sure the heap base is aligned the way we want it.
-	 * (On OS/161, it will begin on a page boundary. But on 
-	 * an arbitrary Unix, it may not be, as traditionally it
-	 * begins at _end.)
-	 */
+  /*
+   * Make sure the heap base is aligned the way we want it.
+   * (On OS/161, it will begin on a page boundary. But on 
+   * an arbitrary Unix, it may not be, as traditionally it
+   * begins at _end.)
+   */
 
-	if (__heapbase % MBLOCKSIZE != 0) {
-		size_t adjust = MBLOCKSIZE - (__heapbase % MBLOCKSIZE);
-		x = sbrk(adjust);
-		if (x==(void *)-1) {
-			err(1, "malloc: sbrk failed aligning heap base");
-		}
-		if ((uintptr_t)x != __heapbase) {
-			err(1, "malloc: heap base moved during init");
-		}
+  if (__heapbase % MBLOCKSIZE != 0) {
+    size_t adjust = MBLOCKSIZE - (__heapbase % MBLOCKSIZE);
+    x = sbrk(adjust);
+    if (x==(void *)-1) {
+      err(1, "malloc: sbrk failed aligning heap base");
+    }
+    if ((uintptr_t)x != __heapbase) {
+      err(1, "malloc: heap base moved during init");
+    }
 #ifdef MALLOCDEBUG
-		warnx("malloc: adjusted heap base upwards by %lu bytes",
-		      (unsigned long) adjust);
+    warnx("malloc: adjusted heap base upwards by %lu bytes",
+          (unsigned long) adjust);
 #endif
-		__heapbase += adjust;
-		__heaptop = __heapbase;
-	}
+    __heapbase += adjust;
+    __heaptop = __heapbase;
+  }
 }
 
 ////////////////////////////////////////////////////////////
@@ -213,41 +213,41 @@ static
 void
 __malloc_dump(void)
 {
-	struct mheader *mh;
-	uintptr_t i;
-	size_t rightprevblock;
+  struct mheader *mh;
+  uintptr_t i;
+  size_t rightprevblock;
 
-	warnx("heap: ************************************************");
+  warnx("heap: ************************************************");
 
-	rightprevblock = 0;
-	for (i=__heapbase; i<__heaptop; i += M_NEXTOFF(mh)) {
-		mh = (struct mheader *) i;
-		if (!M_OK(mh)) {
-			errx(1, "malloc: Heap corrupt; header at 0x%lx"
-			     " has bad magic bits",
-			     (unsigned long) i);
-		}
-		if (mh->mh_prevblock != rightprevblock) {
-			errx(1, "malloc: Heap corrupt; header at 0x%lx"
-			     " has bad previous-block size %lu "
-			     "(should be %lu)",
-			     (unsigned long) i, 
-			     (unsigned long) mh->mh_prevblock << MBLOCKSHIFT,
-			     (unsigned long) rightprevblock << MBLOCKSHIFT);
-		}
-		rightprevblock = mh->mh_nextblock;
+  rightprevblock = 0;
+  for (i=__heapbase; i<__heaptop; i += M_NEXTOFF(mh)) {
+    mh = (struct mheader *) i;
+    if (!M_OK(mh)) {
+      errx(1, "malloc: Heap corrupt; header at 0x%lx"
+           " has bad magic bits",
+           (unsigned long) i);
+    }
+    if (mh->mh_prevblock != rightprevblock) {
+      errx(1, "malloc: Heap corrupt; header at 0x%lx"
+           " has bad previous-block size %lu "
+           "(should be %lu)",
+           (unsigned long) i, 
+           (unsigned long) mh->mh_prevblock << MBLOCKSHIFT,
+           (unsigned long) rightprevblock << MBLOCKSHIFT);
+    }
+    rightprevblock = mh->mh_nextblock;
 
-		warnx("heap: 0x%lx 0x%-6lx (next: 0x%lx) %s",
-		      (unsigned long) i + MBLOCKSIZE,
-		      (unsigned long) M_SIZE(mh),
-		      (unsigned long) (i+M_NEXTOFF(mh)),
-		      mh->mh_inuse ? "INUSE" : "FREE");
-	}
-	if (i!=__heaptop) {
-		errx(1, "malloc: Heap corrupt; ran off end");
-	}
+    warnx("heap: 0x%lx 0x%-6lx (next: 0x%lx) %s",
+          (unsigned long) i + MBLOCKSIZE,
+          (unsigned long) M_SIZE(mh),
+          (unsigned long) (i+M_NEXTOFF(mh)),
+          mh->mh_inuse ? "INUSE" : "FREE");
+  }
+  if (i!=__heaptop) {
+    errx(1, "malloc: Heap corrupt; ran off end");
+  }
 
-	warnx("heap: ************************************************");
+  warnx("heap: ************************************************");
 }
 
 #endif /* MALLOCDEBUG */
@@ -262,21 +262,21 @@ static
 void *
 __malloc_sbrk(size_t size)
 {
-	void *x;
+  void *x;
 
-	x = sbrk(size);
-	if (x == (void *)-1) {
-		return NULL;
-	}
+  x = sbrk(size);
+  if (x == (void *)-1) {
+    return NULL;
+  }
 
-	if ((uintptr_t)x != __heaptop) {
-		errx(1, "malloc: Internal error - "
-		     "heap top moved itself from 0x%lx to 0x%lx",
-		     (unsigned long) __heaptop,
-		     (unsigned long) (uintptr_t) x);
-	}
-	__heaptop += size;
-	return x;
+  if ((uintptr_t)x != __heaptop) {
+    errx(1, "malloc: Internal error - "
+         "heap top moved itself from 0x%lx to 0x%lx",
+         (unsigned long) __heaptop,
+         (unsigned long) (uintptr_t) x);
+  }
+  __heaptop += size;
+  return x;
 }
 
 /*
@@ -291,39 +291,39 @@ static
 void
 __malloc_split(struct mheader *mh, size_t size)
 {
-	struct mheader *mhnext, *mhnew;
-	size_t oldsize;
+  struct mheader *mhnext, *mhnew;
+  size_t oldsize;
 
-	if (size % MBLOCKSIZE != 0) {
-		errx(1, "malloc: Internal error (size %lu passed to split)",
-		     (unsigned long) size);
-	}
+  if (size % MBLOCKSIZE != 0) {
+    errx(1, "malloc: Internal error (size %lu passed to split)",
+         (unsigned long) size);
+  }
 
-	if (M_SIZE(mh) - size < 2*MBLOCKSIZE) {
-		/* no room */
-		return;
-	}
+  if (M_SIZE(mh) - size < 2*MBLOCKSIZE) {
+    /* no room */
+    return;
+  }
 
-	mhnext = M_NEXT(mh);
+  mhnext = M_NEXT(mh);
 
-	oldsize = M_SIZE(mh);
-	mh->mh_nextblock = M_MKFIELD(size + MBLOCKSIZE);
-	
-	mhnew = M_NEXT(mh);
-	if (mhnew==mhnext) {
-		errx(1, "malloc: Internal error (split screwed up?)");
-	}
+  oldsize = M_SIZE(mh);
+  mh->mh_nextblock = M_MKFIELD(size + MBLOCKSIZE);
+  
+  mhnew = M_NEXT(mh);
+  if (mhnew==mhnext) {
+    errx(1, "malloc: Internal error (split screwed up?)");
+  }
 
-	mhnew->mh_prevblock = M_MKFIELD(size + MBLOCKSIZE);
-	mhnew->mh_pad = 0;
-	mhnew->mh_magic1 = MMAGIC;
-	mhnew->mh_nextblock = M_MKFIELD(oldsize - size);
-	mhnew->mh_inuse = 0;
-	mhnew->mh_magic2 = MMAGIC;
+  mhnew->mh_prevblock = M_MKFIELD(size + MBLOCKSIZE);
+  mhnew->mh_pad = 0;
+  mhnew->mh_magic1 = MMAGIC;
+  mhnew->mh_nextblock = M_MKFIELD(oldsize - size);
+  mhnew->mh_inuse = 0;
+  mhnew->mh_magic2 = MMAGIC;
 
-	if (mhnext != (struct mheader *) __heaptop) {
-		mhnext->mh_prevblock = mhnew->mh_nextblock;
-	}
+  if (mhnext != (struct mheader *) __heaptop) {
+    mhnext->mh_prevblock = mhnew->mh_nextblock;
+  }
 }
 
 /*
@@ -332,99 +332,99 @@ __malloc_split(struct mheader *mh, size_t size)
 void *
 malloc(size_t size)
 {
-	struct mheader *mh;
-	uintptr_t i;
-	size_t rightprevblock;
+  struct mheader *mh;
+  uintptr_t i;
+  size_t rightprevblock;
 
-	if (__heapbase==0) {
-		__malloc_init();
-	}
-	if (__heapbase==0 || __heaptop==0 || __heapbase > __heaptop) {
-		warnx("malloc: Internal error - local data corrupt");
-		errx(1, "malloc: heapbase 0x%lx; heaptop 0x%lx", 
-		     (unsigned long) __heapbase, (unsigned long) __heaptop);
-	}
-
-#ifdef MALLOCDEBUG
-	warnx("malloc: about to allocate %lu (0x%lx) bytes", 
-	      (unsigned long) size, (unsigned long) size);
-	__malloc_dump();
-#endif
-
-	/* Round size up to an integral number of blocks. */
-	size = ((size + MBLOCKSIZE - 1) & ~(size_t)(MBLOCKSIZE-1));
-
-	/*
-	 * First-fit search algorithm for available blocks.
-	 * Check to make sure the next/previous sizes all agree.
-	 */
-	rightprevblock = 0;
-	for (i=__heapbase; i<__heaptop; i += M_NEXTOFF(mh)) {
-		mh = (struct mheader *) i;
-		if (!M_OK(mh)) {
-			errx(1, "malloc: Heap corrupt; header at 0x%lx"
-			     " has bad magic bits",
-			     (unsigned long) i);
-		}
-		if (mh->mh_prevblock != rightprevblock) {
-			errx(1, "malloc: Heap corrupt; header at 0x%lx"
-			     " has bad previous-block size %lu "
-			     "(should be %lu)",
-			     (unsigned long) i, 
-			     (unsigned long) mh->mh_prevblock << MBLOCKSHIFT,
-			     (unsigned long) rightprevblock << MBLOCKSHIFT);
-		}
-		rightprevblock = mh->mh_nextblock;
-
-		/* Can't allocate a block that's in use. */
-		if (mh->mh_inuse) {
-			continue;
-		}
-
-		/* Can't allocate a block that isn't big enough. */
-		if (M_SIZE(mh) < size) {
-			continue;
-		}
-
-		/* Try splitting block. */
-		__malloc_split(mh, size);
-
-		/*
-		 * Now, allocate.
-		 */
-		mh->mh_inuse = 1;
+  if (__heapbase==0) {
+    __malloc_init();
+  }
+  if (__heapbase==0 || __heaptop==0 || __heapbase > __heaptop) {
+    warnx("malloc: Internal error - local data corrupt");
+    errx(1, "malloc: heapbase 0x%lx; heaptop 0x%lx", 
+         (unsigned long) __heapbase, (unsigned long) __heaptop);
+  }
 
 #ifdef MALLOCDEBUG
-		warnx("malloc: allocating at %p", M_DATA(mh));
-		__malloc_dump();
+  warnx("malloc: about to allocate %lu (0x%lx) bytes", 
+        (unsigned long) size, (unsigned long) size);
+  __malloc_dump();
 #endif
-		return M_DATA(mh);
-	}
-	if (i!=__heaptop) {
-		errx(1, "malloc: Heap corrupt; ran off end");
-	}
 
-	/*
-	 * Didn't find anything. Expand the heap.
-	 */
+  /* Round size up to an integral number of blocks. */
+  size = ((size + MBLOCKSIZE - 1) & ~(size_t)(MBLOCKSIZE-1));
 
-	mh = __malloc_sbrk(size + MBLOCKSIZE);
-	if (mh == NULL) {
-		return NULL;
-	}
+  /*
+   * First-fit search algorithm for available blocks.
+   * Check to make sure the next/previous sizes all agree.
+   */
+  rightprevblock = 0;
+  for (i=__heapbase; i<__heaptop; i += M_NEXTOFF(mh)) {
+    mh = (struct mheader *) i;
+    if (!M_OK(mh)) {
+      errx(1, "malloc: Heap corrupt; header at 0x%lx"
+           " has bad magic bits",
+           (unsigned long) i);
+    }
+    if (mh->mh_prevblock != rightprevblock) {
+      errx(1, "malloc: Heap corrupt; header at 0x%lx"
+           " has bad previous-block size %lu "
+           "(should be %lu)",
+           (unsigned long) i, 
+           (unsigned long) mh->mh_prevblock << MBLOCKSHIFT,
+           (unsigned long) rightprevblock << MBLOCKSHIFT);
+    }
+    rightprevblock = mh->mh_nextblock;
 
-	mh->mh_prevblock = rightprevblock;
-	mh->mh_magic1 = MMAGIC;
-	mh->mh_magic2 = MMAGIC;
-	mh->mh_pad = 0;
-	mh->mh_inuse = 1;
-	mh->mh_nextblock = M_MKFIELD(size + MBLOCKSIZE);
+    /* Can't allocate a block that's in use. */
+    if (mh->mh_inuse) {
+      continue;
+    }
+
+    /* Can't allocate a block that isn't big enough. */
+    if (M_SIZE(mh) < size) {
+      continue;
+    }
+
+    /* Try splitting block. */
+    __malloc_split(mh, size);
+
+    /*
+     * Now, allocate.
+     */
+    mh->mh_inuse = 1;
 
 #ifdef MALLOCDEBUG
-	warnx("malloc: allocating at %p", M_DATA(mh));
-	__malloc_dump();
+    warnx("malloc: allocating at %p", M_DATA(mh));
+    __malloc_dump();
 #endif
-	return M_DATA(mh);
+    return M_DATA(mh);
+  }
+  if (i!=__heaptop) {
+    errx(1, "malloc: Heap corrupt; ran off end");
+  }
+
+  /*
+   * Didn't find anything. Expand the heap.
+   */
+
+  mh = __malloc_sbrk(size + MBLOCKSIZE);
+  if (mh == NULL) {
+    return NULL;
+  }
+
+  mh->mh_prevblock = rightprevblock;
+  mh->mh_magic1 = MMAGIC;
+  mh->mh_magic2 = MMAGIC;
+  mh->mh_pad = 0;
+  mh->mh_inuse = 1;
+  mh->mh_nextblock = M_MKFIELD(size + MBLOCKSIZE);
+
+#ifdef MALLOCDEBUG
+  warnx("malloc: allocating at %p", M_DATA(mh));
+  __malloc_dump();
+#endif
+  return M_DATA(mh);
 }
 
 ////////////////////////////////////////////////////////////
@@ -437,11 +437,11 @@ static
 void
 __malloc_deadbeef(void *ptr, size_t size)
 {
-	uint32_t *x = ptr;
-	size_t i, n = size/sizeof(uint32_t);
-	for (i=0; i<n; i++) {
-		x[i] = 0xdeadbeef;
-	}
+  uint32_t *x = ptr;
+  size_t i, n = size/sizeof(uint32_t);
+  for (i=0; i<n; i++) {
+    x[i] = 0xdeadbeef;
+  }
 }
 
 /*
@@ -451,28 +451,28 @@ static
 void
 __malloc_trymerge(struct mheader *mh, struct mheader *mhnext)
 {
-	struct mheader *mhnextnext;
+  struct mheader *mhnextnext;
 
-	if (mh->mh_nextblock != mhnext->mh_prevblock) {
-		errx(1, "free: Heap corrupt (%p and %p inconsistent)",
-		     mh, mhnext);
-	}
-	if (mh->mh_inuse || mhnext->mh_inuse) {
-		/* can't merge */
-		return;
-	}
+  if (mh->mh_nextblock != mhnext->mh_prevblock) {
+    errx(1, "free: Heap corrupt (%p and %p inconsistent)",
+         mh, mhnext);
+  }
+  if (mh->mh_inuse || mhnext->mh_inuse) {
+    /* can't merge */
+    return;
+  }
 
-	mhnextnext = M_NEXT(mhnext);
+  mhnextnext = M_NEXT(mhnext);
 
-	mh->mh_nextblock = M_MKFIELD(MBLOCKSIZE + M_SIZE(mh) +
-				     MBLOCKSIZE + M_SIZE(mhnext));
+  mh->mh_nextblock = M_MKFIELD(MBLOCKSIZE + M_SIZE(mh) +
+             MBLOCKSIZE + M_SIZE(mhnext));
 
-	if (mhnextnext != (struct mheader *)__heaptop) {
-		mhnextnext->mh_prevblock = mh->mh_nextblock;
-	}
+  if (mhnextnext != (struct mheader *)__heaptop) {
+    mhnextnext->mh_prevblock = mh->mh_nextblock;
+  }
 
-	/* Deadbeef out the memory used by the now-obsolete header */
-	__malloc_deadbeef(mhnext, sizeof(struct mheader));
+  /* Deadbeef out the memory used by the now-obsolete header */
+  __malloc_deadbeef(mhnext, sizeof(struct mheader));
 }
 
 /*
@@ -481,59 +481,59 @@ __malloc_trymerge(struct mheader *mh, struct mheader *mhnext)
 void
 free(void *x)
 {
-	struct mheader *mh, *mhnext, *mhprev;
+  struct mheader *mh, *mhnext, *mhprev;
 
-	if (x==NULL) {
-		/* safest practice */
-		return;
-	}
+  if (x==NULL) {
+    /* safest practice */
+    return;
+  }
 
-	/* Consistency check. */
-	if (__heapbase==0 || __heaptop==0 || __heapbase > __heaptop) {
-		warnx("free: Internal error - local data corrupt");
-		errx(1, "free: heapbase 0x%lx; heaptop 0x%lx", 
-		     (unsigned long) __heapbase, (unsigned long) __heaptop);
-	}
+  /* Consistency check. */
+  if (__heapbase==0 || __heaptop==0 || __heapbase > __heaptop) {
+    warnx("free: Internal error - local data corrupt");
+    errx(1, "free: heapbase 0x%lx; heaptop 0x%lx", 
+         (unsigned long) __heapbase, (unsigned long) __heaptop);
+  }
 
-	/* Don't allow freeing pointers that aren't on the heap. */
-	if ((uintptr_t)x < __heapbase || (uintptr_t)x >= __heaptop) {
-		errx(1, "free: Invalid pointer %p freed (out of range)", x);
-	}
+  /* Don't allow freeing pointers that aren't on the heap. */
+  if ((uintptr_t)x < __heapbase || (uintptr_t)x >= __heaptop) {
+    errx(1, "free: Invalid pointer %p freed (out of range)", x);
+  }
 
 #ifdef MALLOCDEBUG
-	warnx("free: about to free %p", x);
-	__malloc_dump();
+  warnx("free: about to free %p", x);
+  __malloc_dump();
 #endif
 
-	mh = ((struct mheader *)x)-1;
-	if (!M_OK(mh)) {
-		errx(1, "free: Invalid pointer %p freed (corrupt header)", x);
-	}
+  mh = ((struct mheader *)x)-1;
+  if (!M_OK(mh)) {
+    errx(1, "free: Invalid pointer %p freed (corrupt header)", x);
+  }
 
-	if (!mh->mh_inuse) {
-		errx(1, "free: Invalid pointer %p freed (already free)", x);
-	}
+  if (!mh->mh_inuse) {
+    errx(1, "free: Invalid pointer %p freed (already free)", x);
+  }
 
-	/* mark it free */
-	mh->mh_inuse = 0;
+  /* mark it free */
+  mh->mh_inuse = 0;
 
-	/* wipe it */
-	__malloc_deadbeef(M_DATA(mh), M_SIZE(mh));
+  /* wipe it */
+  __malloc_deadbeef(M_DATA(mh), M_SIZE(mh));
 
-	/* Try merging with the block above (but not if we're at the top) */
-	mhnext = M_NEXT(mh);
-	if (mhnext != (struct mheader *)__heaptop) {
-		__malloc_trymerge(mh, mhnext);
-	}
+  /* Try merging with the block above (but not if we're at the top) */
+  mhnext = M_NEXT(mh);
+  if (mhnext != (struct mheader *)__heaptop) {
+    __malloc_trymerge(mh, mhnext);
+  }
 
-	/* Try merging with the block below (but not if we're at the bottom) */
-	if (mh != (struct mheader *)__heapbase) {
-		mhprev = M_PREV(mh);
-		__malloc_trymerge(mhprev, mh);
-	}
+  /* Try merging with the block below (but not if we're at the bottom) */
+  if (mh != (struct mheader *)__heapbase) {
+    mhprev = M_PREV(mh);
+    __malloc_trymerge(mhprev, mh);
+  }
 
 #ifdef MALLOCDEBUG
-	warnx("free: freed %p", x);
-	__malloc_dump();
+  warnx("free: freed %p", x);
+  __malloc_dump();
 #endif
 }
