@@ -74,7 +74,8 @@ struct Page {
   struct addrspace *addrspace; // The addrspace the page is mapped to.
   paddr_t ppage; // The physical equivalent.
   int state; // Fixed - 0, Free - 1, Dirty - 2, Clean - 3
-  //time_t timestamp; // For eviction.
+  time_t timestamp; // For eviction.
+  int count_pages; // Free multiple pages at the same time.
 };
 
 /*

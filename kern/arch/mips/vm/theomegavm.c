@@ -21,18 +21,19 @@
 
 // startaddr is the start of the memlocation. freeaddr is the start
 // of the available pages.
-static paddr_t startaddr, endaddr, freeaddr, curfreeaddr;
+static paddr_t startaddr, endaddr, freeaddr;
 
 static struct Page *coremap;
 
-int theomegavm_init = 0;
+int page_num, pagenum;
+
+int vm_bootstrap = 0;
 
 // Setup Mon flying coremap, map, map, map, map.
 // The next free page is at curfreeaddr + PAGE_SIZE.
 void vm_bootstrap(void) {
 
-  int page_num, i;
-  struct Page curaddr;
+  int i;
 
   ram_getsize(&startaddr, &endaddr);
 
@@ -43,51 +44,62 @@ void vm_bootstrap(void) {
   coremap = (struct Page *)PADDR_TO_KVADDR(startaddr);
 
   // Setup the coremap.
-  //page_num = 2;
-  /*for (i = page_num; i > 0; i--) {
-    curaddr.ppage = freeaddr + PAGE_SIZE * i;
-    curaddr.state = 1;
-    coremap[i] = curaddr;
-
-  }*/
-
+  // I think the stuff with the curaddr that I had before
+  // was grossly wrong.
   i = 0;
-  while (i < 100) {
-    curaddr.ppage = freeaddr + PAGE_SIZE * i;
-    curaddr.state = 1;
-    coremap[i] = curaddr;
+  while (i < page_num) {
+    coremap[i].ppage = freeaddr + PAGE_SIZE * i;
+    coremap[i].state = 1;
     i++;
   }
 
-  theomegavm_init = 1;
+  pagenum = 0;
+
+  vm_bootstrap = 1;
 }
 
 // Allocate a block of pages.
-// This guy should be compacting pages.
+// This guy interfaces the coremap to the kernel functions
+// that allocate pages.
 static paddr_t getppages(unsigned long npages) {
 
   paddr_t newaddr;
-  //int a;
+  int flag, i;
+  unsigned long count, j, index;
 
-  //spinlock_acquire(&stealmem_lock);
-
-  if (!theomegavm_init) {
+  if (!vm_bootstrap) {
     vm_bootstrap();
   }
 
-  //a = splhigh();
+  flag = 0; count = 0; index = 0;
+  for (i = 0; i < pagenum; i++) {
+    if (flag == 1 && count == npages)
+      break;
+    if (coremap[i].state != 1) {
+      count = 0;
+      flag = 0;
+      continue;
+    }
+    else {
+      if (flag == 0) {
+        index = i;
+        flag = 1;
+      }
+      count++;
+    }
+  }
 
-  newaddr = curfreeaddr;
+  if (count != npages) {
+    return 0;
+  }
+  else if (count == npages) {
+    for (j = index; j < npages; j++) {
+      coremap[j].state = 2;
+    }
+    coremap[index].count_pages = npages;
+    newaddr = coremap[index].ppage;
+  }
 
-  curfreeaddr = curfreeaddr + npages * PAGE_SIZE;
-
-  // Call cleanup crew.
-  /*if (curfreeaddr > endaddr) {
-  }*/
-
-  //splx(a);
-
-  //spinlock_release(&stealmem_lock);
   return newaddr;
 }
 
@@ -98,6 +110,7 @@ vaddr_t alloc_kpages(int npages)
 
   pa = getppages(npages);
 
+  // Handle the swap in and swap out here.
   if (pa == 0) {
     return 0;
   }
@@ -105,12 +118,26 @@ vaddr_t alloc_kpages(int npages)
   return PADDR_TO_KVADDR(pa);
 }
 
-// Compaction happens here?
 void free_kpages(vaddr_t addr)
 {
-  /* nothing - leak the memory. */
+  int i;
+  paddr_t paddr;
+  int count;
 
-  (void)addr;
+  paddr = addr - MIPS_KSEG0;
+
+  i = 0;
+  while (i < page_num) {
+    if (coremap[i].ppage == paddr)
+      break;
+    i++;
+  }
+
+  // You need to bzero the pages I guess.
+  count = coremap[i].count_pages;
+  while (count--) {
+    coremap[i++].state = 1;
+  }
 }
 
 void
