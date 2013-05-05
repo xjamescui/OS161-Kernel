@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@
  * SUCH DAMAGE.
  */
 
+#include <addrspace.h>
+
 #ifndef _VM_H_
 #define _VM_H_
 
@@ -36,7 +38,6 @@
  * You'll probably want to add stuff here.
  */
 
-
 #include <machine/vm.h>
 
 /* Fault-type arguments to vm_fault() */
@@ -44,6 +45,19 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+struct Page {
+
+  struct addrspace *addrspace;
+
+  vaddr_t vaddr;
+  paddr_t paddr;
+
+  int state; // 0 - free, 1 - dirty, 2 - clean, 3 - fixed.
+
+  time_t timestamp;
+
+  unsigned long long pagecount;
+};
 
 /* Initialization function */
 void vm_bootstrap(void);

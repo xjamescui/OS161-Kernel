@@ -17,53 +17,89 @@
 /*
  * Wrap rma_stealmem in a spinlock.
  */
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
-// startaddr is the start of the memlocation. freeaddr is the start
-// of the available pages.
-static paddr_t startaddr, endaddr, freeaddr, curfreeaddr;
+// startaddr, freeaddr is the coremap. freeaddr, endaddr is the
+// coremap.
+static paddr_t startaddr, endaddr, freeaddr;
 
 static struct Page *coremap;
 
-int theomegavm_init;
+static int bootstrap = 0;
+
+static unsigned long long num_pages;
 
 // Setup Mon flying coremap, map, map, map, map.
 // The next free page is at curfreeaddr + PAGE_SIZE.
 void vm_bootstrap(void) {
 
-  int page_num;
-  struct Page *pages;
+  unsigned long long i;
 
   ram_getsize(&startaddr, &endaddr);
 
-  page_num = end / PAGE_SIZE;
+  num_pages = (endaddr - startaddr) / PAGE_SIZE;
 
-  pages = (struct Page *) PADDR_TO_KVADDR(startaddr);
+  freeaddr = startaddr + num_pages * sizeof(struct Page);
 
-  freeaddr = startaddr + page_num * sizeof(struct page);
+  // Setup the coremap.
+  coremap = (struct Page *)PADDR_TO_KVADDR(startaddr);
+  for (i = 0; i < num_pages; i++) {
+    coremap[i].addrspace = NULL;
+    coremap[i].paddr = freeaddr + PAGE_SIZE * i;
+    coremap[i].vaddr = PADDR_TO_KVADDR(coremap[i].paddr);
+    coremap[i].state = 0;
+    coremap[i].timestamp = 0; // For now. Change this later.
+    coremap[i].pagecount = 0;
 
-  curfreeaddr = freeaddr;
+    //bzero((void *)coremap[i].vaddr, PAGE_SIZE);
+  }
 
-  theomegavm_init = 1;
+  bootstrap = 1;
 }
 
 static paddr_t getppages(unsigned long npages) {
 
   paddr_t newaddr;
-  int a;
+  int flag;
+  unsigned long count, i, index;
 
   //spinlock_acquire(&stealmem_lock);
 
-  // If the curfree exceeds endaddr, then I guess you'd have to call
-  // free page or something like that? The interrupts are disabled as it is.
+  if (bootstrap == 0) {
+    newaddr = ram_stealmem(npages);
+    return newaddr;
+  }
 
-  a = splhigh();
+  flag = 0; count = 0; index = 0;
+  for (i = 0; i < num_pages; i++) {
 
-  newaddr = curfreeaddr;
+    if (count == npages) {
+      break;
+    }
 
-  curfreeaddr = curfreeaddr + npages * PAGE_SIZE;
+    if (coremap[i].state == 0) {
+      if (flag == 0) {
+        index = i;
+        flag = 1;
+      }
+      count++;
+    }
+    else if (coremap[i].state == 1) {
+      flag = 0;
+    }
 
-  splx(a);
+  }
+
+  if (count != npages) {
+    return 0;
+  }
+
+  coremap[index].pagecount = npages;
+  newaddr = coremap[index].paddr;
+
+  for (i = 0; i < npages; i++) {
+    coremap[i].state = 1; // Update addrspace. Update timestamp.
+  }
 
   //spinlock_release(&stealmem_lock);
   return newaddr;
@@ -86,9 +122,22 @@ vaddr_t alloc_kpages(int npages)
 void
 free_kpages(vaddr_t addr)
 {
-  /* nothing - leak the memory. */
+  unsigned long long i, j;
 
+  for (i = 0; i < num_pages; i++) {
+    if (coremap[i].vaddr == addr) {
+      for (j = 0; j < coremap[i].pagecount; j++) {
+        bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
+        coremap[i + j].state = 0;
+        coremap[i + j].addrspace = NULL;
+        // update timestamp here.
+        coremap[i + j].pagecount = 0;
+      }
+      break;
+    }
+  }
   (void)addr;
+
 }
 
 void
@@ -120,7 +169,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
   switch (faulttype) {
       case VM_FAULT_READONLY:
-    /* We always create pages read-write, so we can't get this */
+    // We always create pages read-write, so we can't get this
     panic("dumbvm: got VM_FAULT_READONLY\n");
       case VM_FAULT_READ:
       case VM_FAULT_WRITE:
@@ -131,15 +180,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
   as = curthread->t_addrspace;
   if (as == NULL) {
-    /*
-     * No address space set up. This is probably a kernel
-     * fault early in boot. Return EFAULT so as to panic
-     * instead of getting into an infinite faulting loop.
-     */
+
+     // No address space set up. This is probably a kernel
+     // fault early in boot. Return EFAULT so as to panic
+     // instead of getting into an infinite faulting loop.
     return EFAULT;
   }
 
-  /* Assert that the address space has been set up properly. */
+  // Assert that the address space has been set up properly.
   KASSERT(as->as_vbase1 != 0);
   KASSERT(as->as_pbase1 != 0);
   KASSERT(as->as_npages1 != 0);
@@ -173,10 +221,10 @@ vm_fault(int faulttype, vaddr_t faultaddress)
     return EFAULT;
   }
 
-  /* make sure it's page-aligned */
+  // make sure it's page-aligned
   KASSERT((paddr & PAGE_FRAME) == paddr);
 
-  /* Disable interrupts on this CPU while frobbing the TLB. */
+  // Disable interrupts on this CPU while frobbing the TLB.
   spl = splhigh();
 
   for (i=0; i<NUM_TLB; i++) {
@@ -197,7 +245,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   return EFAULT;
 }
 
-struct addrspace *
+/*struct addrspace *
 as_create(void)
 {
   struct addrspace *as = kmalloc(sizeof(struct addrspace));
@@ -229,7 +277,7 @@ as_activate(struct addrspace *as)
 
   (void)as;
 
-  /* Disable interrupts on this CPU while frobbing the TLB. */
+  // Disable interrupts on this CPU while frobbing the TLB.
   spl = splhigh();
 
   for (i=0; i<NUM_TLB; i++) {
@@ -243,18 +291,18 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
      int readable, int writeable, int executable)
 {
-  size_t npages; 
+  size_t npages;
 
-  /* Align the region. First, the base... */
+  // Align the region. First, the base... 
   sz += vaddr & ~(vaddr_t)PAGE_FRAME;
   vaddr &= PAGE_FRAME;
 
-  /* ...and now the length. */
+  // ...and now the length.
   sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
 
   npages = sz / PAGE_SIZE;
 
-  /* We don't use these - all pages are read-write */
+  // We don't use these - all pages are read-write
   (void)readable;
   (void)writeable;
   (void)executable;
@@ -271,9 +319,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
     return 0;
   }
 
-  /*
-   * Support for more than two regions is not available.
-   */
+  // Support for more than two regions is not available.
   kprintf("dumbvm: Warning: too many regions\n");
   return EUNIMP;
 }
@@ -306,7 +352,7 @@ as_prepare_load(struct addrspace *as)
   if (as->as_stackpbase == 0) {
     return ENOMEM;
   }
-  
+
   as_zero_region(as->as_pbase1, as->as_npages1);
   as_zero_region(as->as_pbase2, as->as_npages2);
   as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
@@ -345,7 +391,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
   new->as_vbase2 = old->as_vbase2;
   new->as_npages2 = old->as_npages2;
 
-  /* (Mis)use as_prepare_load to allocate some physical memory. */
+  // (Mis)use as_prepare_load to allocate some physical memory.
   if (as_prepare_load(new)) {
     as_destroy(new);
     return ENOMEM;
@@ -369,4 +415,4 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 
   *ret = new;
   return 0;
-}
+}*/

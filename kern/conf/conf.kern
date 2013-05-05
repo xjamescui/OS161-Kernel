@@ -333,6 +333,7 @@ file      vm/kmalloc.c
 
 optofffile dumbvm   vm/addrspace.c
 
+file arch/mips/vm/theomegavm.c
 #
 # Network
 # (nothing here yet)
