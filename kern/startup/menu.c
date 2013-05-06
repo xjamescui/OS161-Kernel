@@ -144,7 +144,7 @@ common_prog(int nargs, char **args)
     "synchronization-problems kernel.\n");
 #endif 
 
-  result = thread_fork(args[0] /* thread name */, cmd_progthread /* thread function */, args /* thread arg */, nargs /* thread arg */, &prog);
+  result = thread_fork(args[0] , cmd_progthread, args, nargs, &prog);
 
   if (result) {
     kprintf("thread_fork failed: %s\n", strerror(result));

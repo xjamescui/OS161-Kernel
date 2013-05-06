@@ -17,7 +17,7 @@
 /*
  * Wrap rma_stealmem in a spinlock.
  */
-//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 // startaddr, freeaddr is the coremap. freeaddr, endaddr is the
 // coremap.
@@ -40,6 +40,7 @@ void vm_bootstrap(void) {
   num_pages = (endaddr - startaddr) / PAGE_SIZE;
 
   freeaddr = startaddr + num_pages * sizeof(struct Page);
+  freeaddr = ROUNDUP(freeaddr, PAGE_SIZE);
 
   // Setup the coremap.
   coremap = (struct Page *)PADDR_TO_KVADDR(startaddr);
@@ -63,12 +64,13 @@ static paddr_t getppages(unsigned long npages) {
   int flag;
   unsigned long count, i, index;
 
-  //spinlock_acquire(&stealmem_lock);
 
   if (bootstrap == 0) {
     newaddr = ram_stealmem(npages);
     return newaddr;
   }
+
+  spinlock_acquire(&stealmem_lock);
 
   flag = 0; count = 0; index = 0;
   for (i = 0; i < num_pages; i++) {
@@ -86,6 +88,7 @@ static paddr_t getppages(unsigned long npages) {
     }
     else if (coremap[i].state == 1) {
       flag = 0;
+      count = 0;
     }
 
   }
@@ -97,11 +100,12 @@ static paddr_t getppages(unsigned long npages) {
   coremap[index].pagecount = npages;
   newaddr = coremap[index].paddr;
 
-  for (i = 0; i < npages; i++) {
+  for (i = index; i < index + npages; i++) {
     coremap[i].state = 1; // Update addrspace. Update timestamp.
+    bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
 
-  //spinlock_release(&stealmem_lock);
+  spinlock_release(&stealmem_lock);
   return newaddr;
 }
 
@@ -126,13 +130,14 @@ free_kpages(vaddr_t addr)
 
   for (i = 0; i < num_pages; i++) {
     if (coremap[i].vaddr == addr) {
-      for (j = 0; j < coremap[i].pagecount; j++) {
+      //for (j = 0; j < coremap[i].pagecount; j++) {
+        j = 0;
         bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
         coremap[i + j].state = 0;
         coremap[i + j].addrspace = NULL;
         // update timestamp here.
         coremap[i + j].pagecount = 0;
-      }
+      //}
       break;
     }
   }
