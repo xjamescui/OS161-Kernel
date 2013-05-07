@@ -63,7 +63,7 @@ void vm_bootstrap(void) {
   bootstrap = 1;
 }
 
-static paddr_t getppages(unsigned long npages, int state) {
+paddr_t getppages(unsigned long npages, int state) {
 
   paddr_t newaddr;
   int flag;
@@ -183,7 +183,7 @@ vaddr_t alloc_upages(int npages) {
 
   // We need to call a magic function here.
 
-  pa = PADDR_TO_KVADDR(getppages(npages, DIRTY));
+  va = PADDR_TO_KVADDR(getppages(npages, DIRTY));
 
   return va;
 
@@ -245,7 +245,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   KASSERT(as->as_vbase1 != 0);
   KASSERT(as->as_pbase1 != 0);
   KASSERT(as->as_npages1 != 0);
-  KASSERT(as->as_vbase2 != 0);
+  //KASSERT(as->as_vbase2 != 0);
   KASSERT(as->as_pbase2 != 0);
   KASSERT(as->as_npages2 != 0);
   KASSERT(as->as_stackpbase != 0);
