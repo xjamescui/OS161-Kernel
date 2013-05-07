@@ -66,6 +66,8 @@ struct addrspace {
         paddr_t as_pbase2;
         size_t as_npages2;
         paddr_t as_stackpbase;
+
+        paddr_t pagetablehead;
 #endif
 };
 

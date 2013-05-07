@@ -45,6 +45,8 @@ void vm_bootstrap(void) {
   freeaddr = startaddr + num_pages * sizeof(struct Page);
   freeaddr = ROUNDUP(freeaddr, PAGE_SIZE);
 
+  KASSERT((freeaddr & PAGE_FRAME) == freeaddr);
+
   // Setup the coremap.
   coremap = (struct Page *)PADDR_TO_KVADDR(startaddr);
   for (i = 0; i < num_pages; i++) {
@@ -54,8 +56,6 @@ void vm_bootstrap(void) {
     coremap[i].state = FREE;
     coremap[i].timestamp = 0; // For now. Change this later.
     coremap[i].pagecount = 0;
-
-    //bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
 
   coremaplock = lock_create("Coremap Lock");
@@ -63,7 +63,7 @@ void vm_bootstrap(void) {
   bootstrap = 1;
 }
 
-static paddr_t getppages(unsigned long npages) {
+static paddr_t getppages(unsigned long npages, int state) {
 
   paddr_t newaddr;
   int flag;
@@ -92,7 +92,7 @@ static paddr_t getppages(unsigned long npages) {
       }
       count++;
     }
-    else if (coremap[i].state == DIRTY || coremap[i].state == CLEAN) {
+    else if (coremap[i].state == DIRTY || coremap[i].state == CLEAN || coremap[i].state == FIXED) {
       flag = 0;
       count = 0;
     }
@@ -123,7 +123,7 @@ static paddr_t getppages(unsigned long npages) {
   newaddr = coremap[index].paddr;
 
   for (i = index; i < index + npages; i++) {
-    coremap[i].state = DIRTY; // Update addrspace. Update timestamp.
+    coremap[i].state = state; // Update addrspace. Update timestamp.
     bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
 
@@ -138,7 +138,7 @@ vaddr_t alloc_kpages(int npages)
 {
   paddr_t pa;
 
-  pa = getppages(npages);
+  pa = getppages(npages, FIXED);
 
   if (pa == 0) {
     return 0;
@@ -148,8 +148,7 @@ vaddr_t alloc_kpages(int npages)
 }
 
 void
-free_kpages(vaddr_t addr)
-{
+free_kpages(vaddr_t addr) {
   unsigned long long i, j;
 
   //spinlock_acquire(&stealmem_lock);
@@ -174,6 +173,26 @@ free_kpages(vaddr_t addr)
   //spinlock_release(&stealmem_lock);
   lock_release(coremaplock);
 }
+
+// User pages interface to coremap.
+// Update the page table etc in the syscall.
+// The curthread there would take care of this.
+vaddr_t alloc_upages(int npages) {
+
+  vaddr_t va;
+
+  // We need to call a magic function here.
+
+  pa = PADDR_TO_KVADDR(getppages(npages, DIRTY));
+
+  return va;
+
+}
+
+/*void page_free() {
+
+  if ()
+}*/
 
 void
 vm_tlbshootdown_all(void)
