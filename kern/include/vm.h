@@ -45,6 +45,8 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+typedef enum {FREE, DIRTY, CLEAN, FIXED} pagestate_t;
+
 struct Page {
 
   struct addrspace *addrspace;
@@ -52,7 +54,8 @@ struct Page {
   vaddr_t vaddr;
   paddr_t paddr;
 
-  int state; // 0 - free, 1 - dirty, 2 - clean, 3 - fixed.
+  // Much cleaner.
+  pagestate_t state;
 
   time_t timestamp;
 

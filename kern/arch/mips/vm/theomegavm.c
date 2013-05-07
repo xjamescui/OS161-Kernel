@@ -8,6 +8,7 @@
 #include <mips/tlb.h>
 #include <addrspace.h>
 #include <vm.h>
+#include <synch.h>
 
 // The last VM you'll ever need.
 
@@ -17,7 +18,7 @@
 /*
  * Wrap rma_stealmem in a spinlock.
  */
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 // startaddr, freeaddr is the coremap. freeaddr, endaddr is the
 // coremap.
@@ -28,6 +29,8 @@ static struct Page *coremap;
 static int bootstrap = 0;
 
 static unsigned long long num_pages;
+
+static struct lock *coremaplock;
 
 // Setup Mon flying coremap, map, map, map, map.
 // The next free page is at curfreeaddr + PAGE_SIZE.
@@ -48,12 +51,14 @@ void vm_bootstrap(void) {
     coremap[i].addrspace = NULL;
     coremap[i].paddr = freeaddr + PAGE_SIZE * i;
     coremap[i].vaddr = PADDR_TO_KVADDR(coremap[i].paddr);
-    coremap[i].state = 0;
+    coremap[i].state = FREE;
     coremap[i].timestamp = 0; // For now. Change this later.
     coremap[i].pagecount = 0;
 
     //bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
+
+  coremaplock = lock_create("Coremap Lock");
 
   bootstrap = 1;
 }
@@ -62,7 +67,7 @@ static paddr_t getppages(unsigned long npages) {
 
   paddr_t newaddr;
   int flag;
-  unsigned long count, i, index;
+  unsigned long count, i, index, j;
 
 
   if (bootstrap == 0) {
@@ -70,28 +75,45 @@ static paddr_t getppages(unsigned long npages) {
     return newaddr;
   }
 
-  spinlock_acquire(&stealmem_lock);
+  //spinlock_acquire(&stealmem_lock);
+  lock_acquire(coremaplock);
 
-  flag = 0; count = 0; index = 0;
+  flag = 0; count = 0; index = 0; j = 0;
   for (i = 0; i < num_pages; i++) {
 
     if (count == npages) {
       break;
     }
 
-    if (coremap[i].state == 0) {
+    if (coremap[i].state == FREE) {
       if (flag == 0) {
         index = i;
         flag = 1;
       }
       count++;
     }
-    else if (coremap[i].state == 1) {
+    else if (coremap[i].state == DIRTY || coremap[i].state == CLEAN) {
       flag = 0;
       count = 0;
     }
 
   }
+
+  /*flag = 0;
+  for (i = 0; i < num_pages - npages; i++) {
+    for (j = i; j < i + npages; j++) {
+      if (coremap[i].state == FREE && flag == 0) {
+        index = j;
+        flag = 1;
+      }
+      else {
+        flag = 0;
+        count = 0;
+        break;
+      }
+      count++;
+    }
+  }*/
 
   if (count != npages) {
     return 0;
@@ -101,11 +123,13 @@ static paddr_t getppages(unsigned long npages) {
   newaddr = coremap[index].paddr;
 
   for (i = index; i < index + npages; i++) {
-    coremap[i].state = 1; // Update addrspace. Update timestamp.
+    coremap[i].state = DIRTY; // Update addrspace. Update timestamp.
     bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
 
-  spinlock_release(&stealmem_lock);
+  //spinlock_release(&stealmem_lock);
+  lock_release(coremaplock);
+
   return newaddr;
 }
 
@@ -128,12 +152,15 @@ free_kpages(vaddr_t addr)
 {
   unsigned long long i, j;
 
+  //spinlock_acquire(&stealmem_lock);
+  lock_acquire(coremaplock);
+
   for (i = 0; i < num_pages; i++) {
     if (coremap[i].vaddr == addr) {
       //for (j = 0; j < coremap[i].pagecount; j++) {
         j = 0;
         bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
-        coremap[i + j].state = 0;
+        coremap[i + j].state = FREE;
         coremap[i + j].addrspace = NULL;
         // update timestamp here.
         coremap[i + j].pagecount = 0;
@@ -141,8 +168,11 @@ free_kpages(vaddr_t addr)
       break;
     }
   }
+
   (void)addr;
 
+  //spinlock_release(&stealmem_lock);
+  lock_release(coremaplock);
 }
 
 void

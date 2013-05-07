@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,14 +62,14 @@ sem_create(const char *name, int initial_count)
                 return NULL;
         }
 
-	sem->sem_wchan = wchan_create(sem->sem_name);
-	if (sem->sem_wchan == NULL) {
-		kfree(sem->sem_name);
-		kfree(sem);
-		return NULL;
-	}
+  sem->sem_wchan = wchan_create(sem->sem_name);
+  if (sem->sem_wchan == NULL) {
+    kfree(sem->sem_name);
+    kfree(sem);
+    return NULL;
+  }
 
-	spinlock_init(&sem->sem_lock);
+  spinlock_init(&sem->sem_lock);
         sem->sem_count = initial_count;
 
         return sem;
@@ -80,9 +80,9 @@ sem_destroy(struct semaphore *sem)
 {
         KASSERT(sem != NULL);
 
-	/* wchan_cleanup will assert if anyone's waiting on it */
-	spinlock_cleanup(&sem->sem_lock);
-	wchan_destroy(sem->sem_wchan);
+  /* wchan_cleanup will assert if anyone's waiting on it */
+  spinlock_cleanup(&sem->sem_lock);
+  wchan_destroy(sem->sem_wchan);
         kfree(sem->sem_name);
         kfree(sem);
 }
@@ -100,33 +100,33 @@ P(struct semaphore *sem)
          */
         KASSERT(curthread->t_in_interrupt == false);
 
-	spinlock_acquire(&sem->sem_lock);
+  spinlock_acquire(&sem->sem_lock);
         while (sem->sem_count == 0) {
-		/*
-		 * Bridge to the wchan lock, so if someone else comes
-		 * along in V right this instant the wakeup can't go
-		 * through on the wchan until we've finished going to
-		 * sleep. Note that wchan_sleep unlocks the wchan.
-		 *
-		 * Note that we don't maintain strict FIFO ordering of
-		 * threads going through the semaphore; that is, we
-		 * might "get" it on the first try even if other
-		 * threads are waiting. Apparently according to some
-		 * textbooks semaphores must for some reason have
-		 * strict ordering. Too bad. :-)
-		 *
-		 * Exercise: how would you implement strict FIFO
-		 * ordering?
-		 */
-		wchan_lock(sem->sem_wchan);
-		spinlock_release(&sem->sem_lock);
+    /*
+     * Bridge to the wchan lock, so if someone else comes
+     * along in V right this instant the wakeup can't go
+     * through on the wchan until we've finished going to
+     * sleep. Note that wchan_sleep unlocks the wchan.
+     *
+     * Note that we don't maintain strict FIFO ordering of
+     * threads going through the semaphore; that is, we
+     * might "get" it on the first try even if other
+     * threads are waiting. Apparently according to some
+     * textbooks semaphores must for some reason have
+     * strict ordering. Too bad. :-)
+     *
+     * Exercise: how would you implement strict FIFO
+     * ordering?
+     */
+    wchan_lock(sem->sem_wchan);
+    spinlock_release(&sem->sem_lock);
                 wchan_sleep(sem->sem_wchan);
 
-		spinlock_acquire(&sem->sem_lock);
+    spinlock_acquire(&sem->sem_lock);
         }
         KASSERT(sem->sem_count > 0);
         sem->sem_count--;
-	spinlock_release(&sem->sem_lock);
+  spinlock_release(&sem->sem_lock);
 }
 
 void
@@ -134,13 +134,13 @@ V(struct semaphore *sem)
 {
         KASSERT(sem != NULL);
 
-	spinlock_acquire(&sem->sem_lock);
+  spinlock_acquire(&sem->sem_lock);
 
         sem->sem_count++;
         KASSERT(sem->sem_count > 0);
-	wchan_wakeone(sem->sem_wchan);
+  wchan_wakeone(sem->sem_wchan);
 
-	spinlock_release(&sem->sem_lock);
+  spinlock_release(&sem->sem_lock);
 }
 
 ////////////////////////////////////////////////////////////
@@ -255,9 +255,9 @@ lock_release(struct lock *lock)
 bool
 lock_do_i_hold(struct lock *lock)
 {
-        // Write this
+       // Write this
 
-        KASSERT(curthread->t_in_interrupt == false);
+       // KASSERT(curthread->t_in_interrupt == false);
 
         if (curthread == lock->lk_curthread)
           return true;
