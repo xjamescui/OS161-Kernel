@@ -45,6 +45,7 @@ void vm_bootstrap(void) {
   freeaddr = startaddr + num_pages * sizeof(struct Page);
   freeaddr = ROUNDUP(freeaddr, PAGE_SIZE);
 
+  // Assert the address is Page aligned. Nasty bug this.
   KASSERT((freeaddr & PAGE_FRAME) == freeaddr);
 
   // Setup the coremap.
@@ -96,26 +97,12 @@ paddr_t getppages(unsigned long npages, int state) {
       flag = 0;
       count = 0;
     }
-
   }
 
-  /*flag = 0;
-  for (i = 0; i < num_pages - npages; i++) {
-    for (j = i; j < i + npages; j++) {
-      if (coremap[i].state == FREE && flag == 0) {
-        index = j;
-        flag = 1;
-      }
-      else {
-        flag = 0;
-        count = 0;
-        break;
-      }
-      count++;
-    }
-  }*/
-
   if (count != npages) {
+    // call the swapping function rather than
+    // return zero.
+    // newaddr = swappy(.);
     return 0;
   }
 
@@ -133,9 +120,38 @@ paddr_t getppages(unsigned long npages, int state) {
   return newaddr;
 }
 
+void freeppages(vaddr_t addr) {
+
+  unsigned long long i, j, npages;
+
+  spinlock_acquire(&stealmem_lock);
+  //lock_acquire(coremaplock);
+
+  npages = coremap[i].pagecount;
+  for (i = 0; i < num_pages - npages; i++) {
+    if (coremap[i].vaddr == addr) {
+      for (j = 0; j < npages; j++) {
+        bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
+        coremap[i + j].state = FREE;
+        coremap[i + j].addrspace = NULL;
+        coremap[i + j].timestamp = 0; // update timestamp here.
+        coremap[i + j].pagecount = 0;
+      }
+      break;
+    }
+  }
+
+  // setup a flag to check if the page you wanted were in the
+  // swap file.
+
+  spinlock_release(&stealmem_lock);
+  //lock_release(coremaplock);
+}
+
+
 /* Allocate/free some kernel-space virtual pages */
-vaddr_t alloc_kpages(int npages)
-{
+vaddr_t alloc_kpages(int npages) {
+
   paddr_t pa;
 
   pa = getppages(npages, FIXED);
@@ -147,31 +163,9 @@ vaddr_t alloc_kpages(int npages)
   return PADDR_TO_KVADDR(pa);
 }
 
-void
-free_kpages(vaddr_t addr) {
-  unsigned long long i, j;
+void free_kpages(vaddr_t addr) {
 
-  spinlock_acquire(&stealmem_lock);
-  //lock_acquire(coremaplock);
-
-  for (i = 0; i < num_pages; i++) {
-    if (coremap[i].vaddr == addr) {
-      //for (j = 0; j < coremap[i].pagecount; j++) {
-        j = 0;
-        bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
-        coremap[i + j].state = FREE;
-        coremap[i + j].addrspace = NULL;
-        // update timestamp here.
-        coremap[i + j].pagecount = 0;
-      //}
-      break;
-    }
-  }
-
-  (void)addr;
-
-  spinlock_release(&stealmem_lock);
-  //lock_release(coremaplock);
+  freeppages(addr);
 }
 
 // User pages interface to coremap.
@@ -179,21 +173,23 @@ free_kpages(vaddr_t addr) {
 // The curthread there would take care of this.
 vaddr_t alloc_upages(int npages) {
 
-  vaddr_t va;
+  paddr_t pa;
 
-  // We need to call a magic function here.
+  pa = getppages(npages, DIRTY);
 
-  va = PADDR_TO_KVADDR(getppages(npages, DIRTY));
+  if (pa == 0) {
+    return 0;
+  }
 
-  return va;
-
+  return pa;
 }
 
-/*void page_free() {
+/*void free_upages(vaddr_t addr) {
 
   if ()
 }*/
 
+// Check kern/arch/mips/include/vm.h
 void
 vm_tlbshootdown_all(void)
 {

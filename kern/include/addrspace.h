@@ -80,8 +80,6 @@ struct addrspace {
  *                back the initial stack pointer for the new process.
  */
 
-paddr_t getppages(unsigned long npages, int state);
-
 void as_zero_region(paddr_t paddr, unsigned npages);
 
 struct addrspace *as_create(void);
