@@ -18,7 +18,7 @@
 /*
  * Wrap rma_stealmem in a spinlock.
  */
-//static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 // startaddr, freeaddr is the coremap. freeaddr, endaddr is the
 // coremap.
@@ -75,8 +75,8 @@ paddr_t getppages(unsigned long npages, int state) {
     return newaddr;
   }
 
-  //spinlock_acquire(&stealmem_lock);
-  lock_acquire(coremaplock);
+  spinlock_acquire(&stealmem_lock);
+  //lock_acquire(coremaplock);
 
   flag = 0; count = 0; index = 0; j = 0;
   for (i = 0; i < num_pages; i++) {
@@ -127,8 +127,8 @@ paddr_t getppages(unsigned long npages, int state) {
     bzero((void *)coremap[i].vaddr, PAGE_SIZE);
   }
 
-  //spinlock_release(&stealmem_lock);
-  lock_release(coremaplock);
+  spinlock_release(&stealmem_lock);
+  //lock_release(coremaplock);
 
   return newaddr;
 }
@@ -151,8 +151,8 @@ void
 free_kpages(vaddr_t addr) {
   unsigned long long i, j;
 
-  //spinlock_acquire(&stealmem_lock);
-  lock_acquire(coremaplock);
+  spinlock_acquire(&stealmem_lock);
+  //lock_acquire(coremaplock);
 
   for (i = 0; i < num_pages; i++) {
     if (coremap[i].vaddr == addr) {
@@ -170,8 +170,8 @@ free_kpages(vaddr_t addr) {
 
   (void)addr;
 
-  //spinlock_release(&stealmem_lock);
-  lock_release(coremaplock);
+  spinlock_release(&stealmem_lock);
+  //lock_release(coremaplock);
 }
 
 // User pages interface to coremap.
