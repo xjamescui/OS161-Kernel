@@ -140,6 +140,7 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   //new_addrspace = kmalloc(sizeof(struct addrspace));
   if((result = as_copy(curthread->t_addrspace, &new_addrspace))) {
     errno = ENOMEM;
+    splx(a);
     return result;
   }
 
@@ -170,35 +171,42 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
 
 int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
 
-  int errno;
+  int errno, a;
   struct Proc *childp;
+
+  a = splhigh();
 
   if (options != 0) {
     errno = EINVAL;
+    splx(a);
     return -1;
   }
 
   // Waiting for yourself.
   if (pid == curthread->pid) {
     errno = ECHILD;
+    splx(a);
     return -1;
   }
 
   childp = get_process_by_pid(pid);
   if (childp == NULL) {
     errno = ESRCH;
+    splx(a);
     return -1;
   }
 
   // Check that we are not waiting on a parent
   if (childp->pid == curthread->ppid) {
     errno = ECHILD;
+    splx(a);
     return -1;
   }
 
   // Check that the parent is waiting on the child
   if (childp->ppid != curthread->pid) {
     errno = ECHILD;
+    splx(a);
     return -1;
   }
 
@@ -212,6 +220,8 @@ int sys_waitpid(pid_t pid, int *status, int options, int *retval) {
   *retval = pid;
 
   free_this_pid(pid);
+
+  splx(a);
 
   return 0;
 }
