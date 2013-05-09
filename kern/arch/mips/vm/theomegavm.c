@@ -168,7 +168,7 @@ vaddr_t alloc_upages(int npages) {
 
   // Offload the job of the magic function to the getppages function.
 
-  va = PADDR_TO_KVADDR(getppages(npages, DIRTY));
+  va = getppages(npages, DIRTY);
 
   return va;
 
