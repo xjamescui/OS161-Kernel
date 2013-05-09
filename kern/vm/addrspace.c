@@ -101,17 +101,17 @@ as_prepare_load(struct addrspace *as)
   KASSERT(as->as_pbase2 == 0);
   KASSERT(as->as_stackpbase == 0);
 
-  as->as_pbase1 = alloc_upages(as->as_npages1);
+  as->as_pbase1 = getppages(as->as_npages1, DIRTY);//alloc_upages(as->as_npages1);
   if (as->as_pbase1 == 0) {
     return ENOMEM;
   }
 
-  as->as_pbase2 = alloc_upages(as->as_npages2);
+  as->as_pbase2 = getppages(as->as_npages2, DIRTY);//alloc_upages(as->as_npages2);
   if (as->as_pbase2 == 0) {
     return ENOMEM;
   }
 
-  as->as_stackpbase = alloc_upages(DUMBVM_STACKPAGES);
+  as->as_stackpbase = getppages(DUMBVM_STACKPAGES, DIRTY);//alloc_upages(DUMBVM_STACKPAGES);
   if (as->as_stackpbase == 0) {
     return ENOMEM;
   }

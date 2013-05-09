@@ -99,23 +99,8 @@ paddr_t getppages(unsigned long npages, int state) {
 
   }
 
-  /*flag = 0;
-  for (i = 0; i < num_pages - npages; i++) {
-    for (j = i; j < i + npages; j++) {
-      if (coremap[i].state == FREE && flag == 0) {
-        index = j;
-        flag = 1;
-      }
-      else {
-        flag = 0;
-        count = 0;
-        break;
-      }
-      count++;
-    }
-  }*/
-
   if (count != npages) {
+    // Perform magic here rather that returning zero.
     return 0;
   }
 
@@ -181,7 +166,7 @@ vaddr_t alloc_upages(int npages) {
 
   vaddr_t va;
 
-  // We need to call a magic function here.
+  // Offload the job of the magic function to the getppages function.
 
   va = PADDR_TO_KVADDR(getppages(npages, DIRTY));
 
