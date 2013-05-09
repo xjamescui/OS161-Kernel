@@ -227,18 +227,24 @@ void sys__exit(int exitcode) {
 
     parentp = get_process_by_pid(curthread->ppid);
 
-    if (parentp->exited != 1) {
-
-      childp = get_process_by_pid(curthread->pid);
-
-      childp->exitcode = _MKWVAL(exitcode);
-
-      childp->exited = 1;
-
-      V(childp->exit);
+    if (parentp == NULL) {
+      free_this_pid(curthread->pid);
     }
     else {
-      free_this_pid(curthread->pid);
+
+      if (parentp->exited != 1) {
+
+        childp = get_process_by_pid(curthread->pid);
+
+        childp->exitcode = _MKWVAL(exitcode);
+
+        childp->exited = 1;
+
+        V(childp->exit);
+      }
+      else {
+        free_this_pid(curthread->pid);
+      }
     }
   }
 
@@ -254,7 +260,7 @@ int sys_execv(const char *program, char **args) {
 
   int argc, result, temp, i, errno;
   size_t actual;
-  char *kargs, *ptr, *name, *userptrs[10];
+  char *ptr, *name, *userptrs[10], *kkargs[10];
   struct vnode *vn;
   vaddr_t entrypoint, userstk;
 
@@ -264,10 +270,35 @@ int sys_execv(const char *program, char **args) {
   // the program name?
 
   // Check valid program.
+  name = kmalloc(100 * sizeof(char));
   if ((result = copyinstr((const_userptr_t)program, name, 100, &actual))) {
     errno = ENOENT;
     return result;
   }
+
+  argc = 0;
+  while (1) {
+    ptr = (char *)kmalloc(sizeof(char *));
+    if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char *)))) {
+      errno = EFAULT;
+      return result;
+    }
+
+    if (ptr == NULL || *ptr == '\0') {
+      break;
+    }
+
+    kfree(ptr);
+
+    kkargs[argc] = kmalloc(sizeof(char) * 100);
+    copyinstr((const_userptr_t)args[argc], kkargs[argc], 100, &actual);
+    argc++;
+  }
+
+  // Jackass. Code in the present.
+  //kkargs[argc + 1] = NULL;
+  kkargs[argc] = NULL;
+
   // Get the program into memory.
   //name = kstrdup(program);
   if ((result = vfs_open(name, O_RDONLY, 0, &vn))) {
@@ -275,7 +306,7 @@ int sys_execv(const char *program, char **args) {
   }
 
   // Prepare addrspace.
-  KASSERT(curthread->t_addrspace == NULL);
+  //KASSERT(curthread->t_addrspace == NULL);
   if((curthread->t_addrspace = as_create()) == NULL) {
     vfs_close(vn);
     errno = ENOMEM;
@@ -298,52 +329,31 @@ int sys_execv(const char *program, char **args) {
     return result;
   }
 
-  // Get the ags in and pad them.
+  // Get the args in and pad them. Again, jackass, code in
+  // the present.
   argc = 0;
   while (1) {
 
-    ptr = (char *)kmalloc(sizeof(char));
-    // Use ptr
-    if((result = copyin((const_userptr_t)(args + argc), (void *)ptr, sizeof(char)))) {
-      errno = EFAULT;
-      return result;
-    }
-    if (ptr == NULL) {
-
+    if (kkargs[argc] == NULL) {
       userstk -= 4 * sizeof(char);
-
-      // Not needed. Just update the pointer.
-      /*if((result = copyout((const void *)args[argc], (userptr_t)userstk, sizeof(char)))) {
-        return result;
-      }*/
       break;
     }
 
-    kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
-
-    // Use ptr
-    if((result = copyinstr((const_userptr_t)args[argc], kargs, ARGSIZE, &actual))) {
-      errno = E2BIG;
-      return result;
-    }
-
     // Pad.
-    temp = strlen(kargs) + 1;
+    temp = strlen(kkargs[argc]) + 1;
     temp += (4 - (temp % 4));
-    for (i = strlen(kargs) + 1; i < temp; i++)
-      kargs[i] = '\0';
+    for (i = strlen(kkargs[argc]) + 1; i < temp; i++)
+      kkargs[argc][i] = '\0';
 
     // Move the stakptr;
     userstk -= temp;
 
     //copyout the arg to stack.
-    if((result = copyout((const void *)kargs , (userptr_t)userstk, temp))) {
+    if((result = copyout((const void *)kkargs[argc], (userptr_t)userstk, temp))) {
       return result;
     }
 
     userptrs[argc] = (char *)userstk;
-
-    //kprintf("kargv[%d]: %p - %s\n", argc, (void *)userstk, userptrs[argc]);
 
     argc++;
   }
@@ -353,7 +363,6 @@ int sys_execv(const char *program, char **args) {
 
     userstk -= sizeof(char *);
 
-    //if((result = copyout((const void *)userptrs[i] , (userptr_t)userstk, sizeof(char *)))) { :| :/
     if((result = copyout((const void *)(userptrs + i) , (userptr_t)userstk, sizeof(char *)))) {
       return result;
     }
