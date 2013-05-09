@@ -23,6 +23,13 @@ struct vnode;
  * You write this.
  */
 
+struct pagetable {
+
+  vaddr_t vaddr;
+  paddr_t paddr;
+  struct pagetable *next;
+};
+
 struct addrspace {
 #if OPT_DUMBVM
         vaddr_t as_vbase1;
@@ -42,7 +49,7 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 
-        vaddr_t pagetablehead;
+        struct pagetable *pagetable;
 #endif
 };
 

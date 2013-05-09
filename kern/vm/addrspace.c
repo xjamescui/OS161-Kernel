@@ -7,13 +7,10 @@
 #include <addrspace.h>
 #include <synch.h>
 
+struct addrspace * as_create(void) {
 
-
-struct addrspace *
-as_create(void)
-{
   struct addrspace *as = kmalloc(sizeof(struct addrspace));
-  if (as==NULL) {
+  if (as == NULL) {
     return NULL;
   }
 
@@ -25,18 +22,32 @@ as_create(void)
   as->as_npages2 = 0;
   as->as_stackpbase = 0;
 
+  as->pagetable = kmalloc(sizeof(struct pagetable));
+  if (as->pagetable == NULL) {
+    kfree(as);
+    return NULL;
+  }
+
   return as;
 }
 
-void
-as_destroy(struct addrspace *as)
-{
+void as_destroy(struct addrspace *as) {
+
+  struct pagetable *node, *temp;
+
   kfree(as);
+
+  // loop and delete the linkedlist.
+  node = as->pagetable;
+  while (node != NULL) {
+    temp = node;
+    node = node->next;
+    kfree(temp);
+  }
 }
 
-void
-as_activate(struct addrspace *as)
-{
+void as_activate(struct addrspace *as) {
+
   int i, spl;
 
   (void)as;
