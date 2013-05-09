@@ -33,17 +33,17 @@ struct addrspace * as_create(void) {
 
 void as_destroy(struct addrspace *as) {
 
-  struct pagetable *node, *temp;
+  //struct pagetable *node, *temp;
 
   kfree(as);
 
   // loop and delete the linkedlist.
-  node = as->pagetable;
+  /*node = as->pagetable;
   while (node != NULL) {
     temp = node;
     node = node->next;
     kfree(temp);
-  }
+  }*/
 }
 
 void as_activate(struct addrspace *as) {
