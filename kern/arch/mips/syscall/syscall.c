@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
- *	The President and Fellows of Harvard College.
+ *  The President and Fellows of Harvard College.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,39 +80,39 @@
 void
 syscall(struct trapframe *tf)
 {
-	int callno;
-	int32_t retval;
-	int err, whence;
+  int callno;
+  int32_t retval;
+  int err, whence;
   off_t pos, ret;
 
-	KASSERT(curthread != NULL);
-	KASSERT(curthread->t_curspl == 0);
-	KASSERT(curthread->t_iplhigh_count == 0);
+  KASSERT(curthread != NULL);
+  KASSERT(curthread->t_curspl == 0);
+  KASSERT(curthread->t_iplhigh_count == 0);
 
-	callno = tf->tf_v0;
+  callno = tf->tf_v0;
 
 
-	/*
-	 * Initialize retval to 0. Many of the system calls don't
-	 * really return a value, just 0 for success and -1 on
-	 * error. Since retval is the value returned on success,
-	 * initialize it to 0 by default; thus it's not necessary to
-	 * deal with it except for calls that return other values, 
-	 * like write.
-	 */
+  /*
+   * Initialize retval to 0. Many of the system calls don't
+   * really return a value, just 0 for success and -1 on
+   * error. Since retval is the value returned on success,
+   * initialize it to 0 by default; thus it's not necessary to
+   * deal with it except for calls that return other values, 
+   * like write.
+   */
 
-	retval = 0;
+  retval = 0;
 
-	switch (callno) {
-	    case SYS_reboot:
-		    err = sys_reboot(tf->tf_a0);
-    		break;
+  switch (callno) {
+      case SYS_reboot:
+        err = sys_reboot(tf->tf_a0);
+        break;
 
-	    case SYS___time:
-		    err = sys___time((userptr_t)tf->tf_a0, (userptr_t)tf->tf_a1);
-    		break;
+      case SYS___time:
+        err = sys___time((userptr_t)tf->tf_a0, (userptr_t)tf->tf_a1);
+        break;
 
-	    /* Add stuff here */
+      /* Add stuff here */
 
       case SYS_open:
         err = sys_open((char *) tf->tf_a0, tf->tf_a1, tf->tf_a2, &retval);
@@ -135,7 +135,7 @@ syscall(struct trapframe *tf)
         break;
 
       case SYS_chdir:
-        err = sys_chdir((const char *)tf->tf_a0);
+        err = sys_chdir((const_userptr_t *)tf->tf_a0);
         break;
 
       case SYS___getcwd:
@@ -189,39 +189,39 @@ syscall(struct trapframe *tf)
 
       /* End add stuff */
  
-	    default:
-		kprintf("Unknown syscall %d\n", callno);
-		err = ENOSYS;
-		break;
-	}
+      default:
+    kprintf("Unknown syscall %d\n", callno);
+    err = ENOSYS;
+    break;
+  }
 
 
-	if (err) {
-		/*
-		 * Return the error code. This gets converted at
-		 * userlevel to a return value of -1 and the error
-		 * code in errno.
-		 */
-		tf->tf_v0 = err;
-		tf->tf_a3 = 1;      /* signal an error */
-	}
-	else {
-		/* Success. */
-		tf->tf_v0 = retval;
-		tf->tf_a3 = 0;      /* signal no error */
-	}
-	
-	/*
-	 * Now, advance the program counter, to avoid restarting
-	 * the syscall over and over again.
-	 */
-	
-	tf->tf_epc += 4;
+  if (err) {
+    /*
+     * Return the error code. This gets converted at
+     * userlevel to a return value of -1 and the error
+     * code in errno.
+     */
+    tf->tf_v0 = err;
+    tf->tf_a3 = 1;      /* signal an error */
+  }
+  else {
+    /* Success. */
+    tf->tf_v0 = retval;
+    tf->tf_a3 = 0;      /* signal no error */
+  }
+  
+  /*
+   * Now, advance the program counter, to avoid restarting
+   * the syscall over and over again.
+   */
+  
+  tf->tf_epc += 4;
 
-	/* Make sure the syscall code didn't forget to lower spl */
-	KASSERT(curthread->t_curspl == 0);
-	/* ...or leak any spinlocks */
-	KASSERT(curthread->t_iplhigh_count == 0);
+  /* Make sure the syscall code didn't forget to lower spl */
+  KASSERT(curthread->t_curspl == 0);
+  /* ...or leak any spinlocks */
+  KASSERT(curthread->t_iplhigh_count == 0);
 }
 
 /*
@@ -235,5 +235,5 @@ syscall(struct trapframe *tf)
 void
 enter_forked_process(struct trapframe *tf)
 {
-	(void)tf;
+  (void)tf;
 }

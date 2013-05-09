@@ -50,6 +50,12 @@ int sys_open(const char *filename, int flags, int mode, int32_t *retval) {
   // Check if it works without this.
   fd = -1;
 
+  // Check valid pointer to filename
+  if (((unsigned int)filename) > 0x9FFFFFFF) {
+    errno = EFAULT;
+    return -1;
+  }
+
   // Check valid name.
   if (filename == "" || strlen(filename) > NAME_MAX) {
     errno = EFAULT;
@@ -142,7 +148,7 @@ int sys_close(int fd) {
   struct File *temp_file;
   int errno;
 
-  if (fd < 0 && fd > OPEN_MAX) {
+  if (fd < 0 || fd > OPEN_MAX) {
     errno = EBADF;
     return -1;
   }
@@ -323,19 +329,21 @@ int sys_dup2(int oldfd, int newfd) {
   return 0;
 }
 
-int sys_chdir(const char *pathname) {
+int sys_chdir(const_userptr_t *pathname) {
 
   char *k_pathname;
   int result;
-  size_t size;
+  size_t size, actual;
 
   result = 0;
 
-  size = sizeof(pathname);
+  // Aaaaaaaarh!
+  //size = sizeof(pathname);
+  size = 30;
 
   k_pathname = (char *)kmalloc(size * sizeof(char));
 
-  copyinstr((const_userptr_t)pathname, k_pathname, size, &size);
+  copyinstr((const_userptr_t)pathname, k_pathname, size, &actual);
 
   if ((result = vfs_chdir(k_pathname))) {
     kfree(k_pathname);
@@ -350,11 +358,17 @@ int sys_chdir(const char *pathname) {
 int sys__getcwd(char *buf, size_t buflen) {
 
   char *k_buf;
-  int errno;
+  int errno, result;
   struct uio *getcwd_uio;
   struct iovec *getcwd_iovec;
+  size_t size;
 
   if (buf == NULL) {
+    errno = EFAULT;
+    return -1;
+  }
+
+  if (((unsigned int)buf) > 0x40000000) {
     errno = EFAULT;
     return -1;
   }
@@ -367,12 +381,13 @@ int sys__getcwd(char *buf, size_t buflen) {
 
   uio_kinit(getcwd_iovec, getcwd_uio, k_buf, buflen, 0, UIO_READ);
 
-  if(vfs_getcwd(getcwd_uio))
-    return -1;
+  if((result = vfs_getcwd(getcwd_uio))) {
+    return result;
+  }
 
-  copyout((const void*)k_buf, (void *)buf, sizeof(buflen));
+  copyoutstr((const void*)k_buf, (void *)buf, sizeof(buflen), &size);
 
-  return 0;
+  return size;
 }
 
 // I'm late, I'm late, I'm late!

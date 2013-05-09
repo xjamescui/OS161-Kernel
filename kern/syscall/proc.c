@@ -41,15 +41,12 @@ int assign_pid(struct thread *new_thread) {
   int errno;
   struct Proc *entry;
 
-  //a = splhigh();
-
   pid = PID_MIN;
   while (process_table[pid] != NULL)
     pid++;
 
   if (pid == PID_MAX) {
     errno = ENPROC;
-    //splx(a);
     return -1;
   }
 
@@ -65,8 +62,6 @@ int assign_pid(struct thread *new_thread) {
   entry->self = new_thread;
 
   process_table[pid] = entry;
-
-  //splx(a);
 
   return pid;
 }
@@ -147,9 +142,11 @@ int sys_fork(struct trapframe *tf, pid_t *retval) {
   new_tf = kmalloc(sizeof(struct trapframe));
   *new_tf = *tf;
 
-  // figure out how to get the name.
-  if((result = thread_fork("child", child_fork_entry, (struct trapframe *)new_tf, (unsigned long)new_addrspace, &child)))
+  splx(a);
+  if((result = thread_fork("child", child_fork_entry, (struct trapframe *)new_tf, (unsigned long)new_addrspace, &child))) {
     return result;
+  }
+  a = splhigh();
 
   i = 3;
   // Increase the reference count.
