@@ -25,9 +25,17 @@ struct vnode;
 
 struct pagetable {
 
-  vaddr_t vaddr;
   paddr_t paddr;
   struct pagetable *next;
+};
+
+struct regionlistnode {
+
+  vaddr_t vbase;
+  paddr_t pbase;
+  size_t npages;
+
+  struct regionlistnode *next;
 };
 
 struct addrspace {
@@ -40,7 +48,6 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        /* Put stuff here for your VM system */
         vaddr_t as_vbase1;
         paddr_t as_pbase1;
         size_t as_npages1;
@@ -48,8 +55,14 @@ struct addrspace {
         paddr_t as_pbase2;
         size_t as_npages2;
         paddr_t as_stackpbase;
-
+        /* Put stuff here for your VM system */
         struct pagetable *pagetable;
+
+        struct regionlistnode *regionlisthead;
+
+        // Stuff for the heap.
+
+        paddr_t stackpbase;
 #endif
 };
 
