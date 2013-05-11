@@ -22,15 +22,6 @@ struct addrspace * as_create(void) {
     return NULL;
   }
 
-  /*as->regionlisthead = kmalloc(sizeof(struct regionlistnode));
-  if (as->regionlisthead == NULL) {
-    kfree(as);
-    return NULL;
-  }
-  as->regionlisthead->vbase = 0;
-  as->regionlisthead->pbase = 0;
-  as->regionlisthead->npages = 0;
-  as->regionlisthead->next = NULL;*/
   as->regionlisthead = NULL;
 
   as->pagetable = kmalloc(sizeof(struct pagetable));
@@ -167,7 +158,8 @@ int as_prepare_load(struct addrspace *as) {
 
   struct regionlistnode *rlnode;
 
-  KASSERT(as->as_pbase1 == 0);
+/////////////////////////////////////////
+  /*KASSERT(as->as_pbase1 == 0);
   KASSERT(as->as_pbase2 == 0);
   KASSERT(as->as_stackpbase == 0);
   as->as_pbase1 = getppages(as->as_npages1, DIRTY);
@@ -184,7 +176,8 @@ int as_prepare_load(struct addrspace *as) {
   }
   as_zero_region(as->as_pbase1, as->as_npages1);
   as_zero_region(as->as_pbase2, as->as_npages2);
-  as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
+  as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);*/
+  /////////////////////////////////
 
 
   rlnode = as->regionlisthead;
@@ -217,7 +210,7 @@ int as_complete_load(struct addrspace *as) {
 
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
-  KASSERT(as->as_stackpbase != 0);
+  KASSERT(as->stackpbase != 0);
 
   *stackptr = USERSTACK;
   return 0;
@@ -255,10 +248,12 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
     }
   }
 
-  new->as_vbase1 = old->as_vbase1;
+////////////////////////////////////////
+  /*new->as_vbase1 = old->as_vbase1;
   new->as_npages1 = old->as_npages1;
   new->as_vbase2 = old->as_vbase2;
-  new->as_npages2 = old->as_npages2;
+  new->as_npages2 = old->as_npages2;*/
+  ///////////////////////////////
 
   /* (Mis)use as_prepare_load to allocate some physical memory. */
   if (as_prepare_load(new)) {
@@ -282,7 +277,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 
 //////////////////////////////////
 
-  KASSERT(new->as_pbase1 != 0);
+  /*KASSERT(new->as_pbase1 != 0);
   KASSERT(new->as_pbase2 != 0);
   KASSERT(new->as_stackpbase != 0);
 
@@ -296,7 +291,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 
   memmove((void *)PADDR_TO_KVADDR(new->as_stackpbase),
     (const void *)PADDR_TO_KVADDR(old->as_stackpbase),
-    DUMBVM_STACKPAGES*PAGE_SIZE);
+    DUMBVM_STACKPAGES*PAGE_SIZE);*/
 
 ///////////////////////////////////////////////////////////////////
   *ret = new;

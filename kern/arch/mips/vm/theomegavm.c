@@ -195,7 +195,8 @@ vm_tlbshootdown(const struct tlbshootdown *ts)
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
-  vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop, vbase, vtop;
+  //vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop, vbase, vtop;
+  vaddr_t stackbase, stacktop, vbase, vtop;
   paddr_t paddr;
   int i, flag;
   uint32_t ehi, elo;
@@ -269,18 +270,15 @@ vm_fault(int faulttype, vaddr_t faultaddress)
       rlnode = rlnode->next;
     }
 
-    if (flag == 1) {
-      // make sure it's page-aligned
-      KASSERT((paddr & PAGE_FRAME) == paddr);
-    }
-    else {
-      KASSERT(as->as_vbase1 != 0);
-      //return EFAULT;
+    if (flag == 0) {
+      flag = 0;
+      return EFAULT;
     }
   }
 
-  /* Assert that the address space has been set up properly. */
-  KASSERT(as->as_vbase1 != 0);
+  // Assert that the address space has been set up properly. */
+  /////////////////////
+  /*KASSERT(as->as_vbase1 != 0);
   KASSERT(as->as_pbase1 != 0);
   KASSERT(as->as_npages1 != 0);
   KASSERT(as->as_vbase2 != 0);
@@ -311,7 +309,8 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   }
   else {
     return EFAULT;
-  }
+  }*/
+  /////////////////////////////////////////
 
   /* make sure it's page-aligned */
   KASSERT((paddr & PAGE_FRAME) == paddr);
