@@ -22,7 +22,7 @@ struct addrspace * as_create(void) {
     return NULL;
   }
 
-  as->regionlisthead = kmalloc(sizeof(struct regionlistnode));
+  /*as->regionlisthead = kmalloc(sizeof(struct regionlistnode));
   if (as->regionlisthead == NULL) {
     kfree(as);
     return NULL;
@@ -30,7 +30,8 @@ struct addrspace * as_create(void) {
   as->regionlisthead->vbase = 0;
   as->regionlisthead->pbase = 0;
   as->regionlisthead->npages = 0;
-  as->regionlisthead->next = NULL;
+  as->regionlisthead->next = NULL;*/
+  as->regionlisthead = NULL;
 
   as->pagetable = kmalloc(sizeof(struct pagetable));
   as->pagetable->next = NULL;
@@ -121,9 +122,15 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readabl
 
   // Walk through the region list and add this guy.
   rlnode = as->regionlisthead;
-  if (rlnode->vbase != 0) {
-
-    while(rlnode->next != NULL) {
+  if (rlnode == NULL) {
+    as->regionlisthead = kmalloc(sizeof(struct regionlistnode));
+    as->regionlisthead->vbase = vaddr;
+    as->regionlisthead->npages = npages;
+    as->regionlisthead->pbase = 0;
+    as->regionlisthead->next = NULL;
+  }
+  else {
+    while (rlnode->next != NULL) {
       rlnode = rlnode->next;
     }
     rlnode->next = kmalloc(sizeof(struct regionlistnode));
@@ -135,13 +142,6 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readabl
     rlnode->next->npages = npages;
     rlnode->next->pbase = 0;
     rlnode->next->next = NULL;
-  }
-  else {
-
-    rlnode->vbase = vaddr;
-    rlnode->npages = npages;
-    rlnode->pbase = 0;
-    rlnode->next = NULL;
   }
 
   if (as->as_vbase1 == 0) {
@@ -170,22 +170,18 @@ int as_prepare_load(struct addrspace *as) {
   KASSERT(as->as_pbase1 == 0);
   KASSERT(as->as_pbase2 == 0);
   KASSERT(as->as_stackpbase == 0);
-
   as->as_pbase1 = getppages(as->as_npages1, DIRTY);
   if (as->as_pbase1 == 0) {
     return ENOMEM;
   }
-
   as->as_pbase2 = getppages(as->as_npages2, DIRTY);
   if (as->as_pbase2 == 0) {
     return ENOMEM;
   }
-
   as->as_stackpbase = getppages(DUMBVM_STACKPAGES, DIRTY);
   if (as->as_stackpbase == 0) {
     return ENOMEM;
   }
-
   as_zero_region(as->as_pbase1, as->as_npages1);
   as_zero_region(as->as_pbase2, as->as_npages2);
   as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
@@ -236,25 +232,27 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
   if (new == NULL) {
     return ENOMEM;
   }
+  new->regionlisthead = kmalloc(sizeof(struct regionlistnode));
+  new->regionlisthead->next = NULL;
 
   rlold = old->regionlisthead;
   rlnew = new->regionlisthead;
-  while (rlold != NULL) {
-
-    if (rlnew == NULL) {
-      rlnew = kmalloc(sizeof(struct regionlistnode));
-      if (rlnew == NULL) {
-        kfree(new);
-        return ENOMEM;
-      }
-    }
+  while (1) {
 
     rlnew->vbase = rlold->vbase;
     rlnew->npages = rlold->npages;
     rlnew->pbase = 0;
 
-    rlnew = rlnew->next;
     rlold = rlold->next;
+    if (rlold == NULL) {
+      break;
+    }
+
+    if (rlnew->next == NULL) {
+      rlnew->next = kmalloc(sizeof(struct regionlistnode));
+      rlnew->next->next = NULL;
+      rlnew = rlnew->next;
+    }
   }
 
   new->as_vbase1 = old->as_vbase1;
