@@ -26,6 +26,7 @@ struct vnode;
 struct pagetable {
 
   paddr_t paddr;
+  vaddr_t vaddr;
   struct pagetable *next;
 };
 
@@ -48,14 +49,6 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        vaddr_t as_vbase1;
-        paddr_t as_pbase1;
-        size_t as_npages1;
-        vaddr_t as_vbase2;
-        paddr_t as_pbase2;
-        size_t as_npages2;
-        paddr_t as_stackpbase;
-        /* Put stuff here for your VM system */
         struct pagetable *pagetable;
 
         struct regionlistnode *regionlisthead;

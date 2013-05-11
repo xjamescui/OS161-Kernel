@@ -202,6 +202,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   struct addrspace *as;
   int spl;
   struct regionlistnode *rlnode;
+  struct pagetable *pagetableentry;
 
   faultaddress &= PAGE_FRAME;
 
@@ -233,8 +234,6 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   stackbase = USERSTACK - DUMBVM_STACKPAGES * PAGE_SIZE;
   stacktop = USERSTACK;
   if (faultaddress >= stackbase && faultaddress < stacktop) {
-    //as->stackpbase = alloc_upages(DUMBVM_STACKPAGES);
-    // Add them to your pagetable.
     paddr = (faultaddress - stackbase) + as->stackpbase;
   }
   else {
@@ -244,17 +243,44 @@ vm_fault(int faulttype, vaddr_t faultaddress)
     while (rlnode != NULL) {
 
       KASSERT(rlnode->vbase != 0);
-      KASSERT(rlnode->pbase != 0);
+      //KASSERT(rlnode->pbase != 0);
       KASSERT(rlnode->npages != 0);
-      //KASSERT((rlnode->vbase & PAGE_FRAME) == rlnode->vbase);
+      KASSERT((rlnode->vbase & PAGE_FRAME) == rlnode->vbase);
       //KASSERT((rlnode->pbase & PAGE_FRAME) == rlnode->pbase);
 
       vbase = rlnode->vbase;
       vtop = rlnode->vbase + rlnode->npages * PAGE_SIZE;
 
       if (faultaddress >= vbase && faultaddress < vtop) {
-        //rlnode->pbase = alloc_upages(1);
-        paddr = (faultaddress - vbase) + rlnode->pbase;
+        pagetableentry = as->pagetable;
+        flag = 0;
+        if (pagetableentry != NULL)
+          while (pagetableentry->next != NULL) {
+            if (pagetableentry->vaddr == vbase) {
+              flag = 1;
+              break;
+            }
+            pagetableentry = pagetableentry->next;
+          }
+        else {
+          as->pagetable = kmalloc(sizeof(struct pagetable));
+          as->pagetable->next = NULL;
+          pagetableentry = as->pagetable;
+          pagetableentry->paddr = alloc_upages(1);
+          flag = 1;
+        }
+
+        if (flag == 0) {
+          if (pagetableentry->vaddr != vbase) {
+            pagetableentry->next = kmalloc(sizeof(struct pagetable));
+            pagetableentry->next->next = NULL;
+            pagetableentry->next->paddr = alloc_upages(1);
+            pagetableentry->next->vaddr = vbase;
+            pagetableentry = pagetableentry->next;
+          }
+        }
+        //paddr = (faultaddress - vbase) + rlnode->pbase;
+        paddr = (faultaddress - vbase) + pagetableentry->paddr;
         flag = 1;
         break;
       }

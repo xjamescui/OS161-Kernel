@@ -86,7 +86,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readabl
 
   // Align the region. First, the base...
   sz += vaddr & ~(vaddr_t)PAGE_FRAME;
-  //vaddr &= PAGE_FRAME;
+  vaddr &= PAGE_FRAME;
 
   // ...and now the length.
   sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
@@ -131,10 +131,11 @@ void as_zero_region(paddr_t paddr, unsigned npages) {
 
 int as_prepare_load(struct addrspace *as) {
 
-  struct regionlistnode *rlnode;
+  //struct regionlistnode *rlnode;
   (void)as;
 
-  rlnode = as->regionlisthead;
+  // Moved to VM fault except the stack.
+  /*rlnode = as->regionlisthead;
   while (rlnode != NULL) {
 
     KASSERT(rlnode->pbase == 0);
@@ -144,7 +145,7 @@ int as_prepare_load(struct addrspace *as) {
     }
     as_zero_region(rlnode->pbase, rlnode->npages);
     rlnode = rlnode->next;
-  }
+  }*/
 
   KASSERT(as->stackpbase == 0);
   as->stackpbase = alloc_upages(DUMBVM_STACKPAGES);
@@ -213,13 +214,44 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
   KASSERT(new->stackpbase != 0);
   memmove((void *)PADDR_TO_KVADDR(new->stackpbase), (const void *)PADDR_TO_KVADDR(old->stackpbase), DUMBVM_STACKPAGES*PAGE_SIZE);
 
+  struct pagetable *pagetableentry;
+  paddr_t paddr;
+  int npages;
+
   rlnew = new->regionlisthead;
   rlold = new->regionlisthead;
-  while (rlnew != NULL) {
+  if (new->pagetable == NULL) {
+    new->pagetable = kmalloc(sizeof(struct pagetable));
+    new->pagetable->next = NULL;
+    pagetableentry = new->pagetable;
+  }
+  else {
+    pagetableentry = new->pagetable;
+    while(pagetableentry->next != NULL) {
+      pagetableentry = pagetableentry->next;
+    }
+    pagetableentry->next = kmalloc(sizeof(struct pagetable));
+    pagetableentry->next->next = NULL;
+    pagetableentry = pagetableentry->next;
+  }
 
-    rlnew->pbase = alloc_upages(rlnew->npages);
-    KASSERT(rlnew->pbase != 0);
-    memmove((void *)PADDR_TO_KVADDR(rlnew->pbase), (const void *)PADDR_TO_KVADDR(rlold->pbase), rlold->npages*PAGE_SIZE);
+  while (rlnew != NULL) {
+    npages = rlold->npages;
+    while (1) {
+      paddr = alloc_upages(1);
+      pagetableentry->paddr = paddr;
+      pagetableentry->vaddr = rlnew->vbase;
+
+      KASSERT(paddr != 0);
+      memmove((void *)PADDR_TO_KVADDR(paddr), (const void *)PADDR_TO_KVADDR(rlold->pbase), 1);
+
+      npages -= 1;
+      if (npages == 0)
+        break;
+      pagetableentry->next = kmalloc(sizeof(struct pagetable));
+      pagetableentry->next->next = NULL;
+      pagetableentry = pagetableentry->next;
+    }
 
     rlnew = rlnew->next;
     rlold = rlold->next;
