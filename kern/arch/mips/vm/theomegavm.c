@@ -195,14 +195,14 @@ vm_tlbshootdown(const struct tlbshootdown *ts)
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
-  //vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop, vbase, vtop;
-  vaddr_t stackbase, stacktop, vbase, vtop;
+  vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;//, vbase, vtop;
+  //vaddr_t stackbase, stacktop, vbase, vtop;
   paddr_t paddr;
-  int i, flag;
+  int i;//, flag;
   uint32_t ehi, elo;
   struct addrspace *as;
   int spl;
-  struct regionlistnode *rlnode;
+  //struct regionlistnode *rlnode;
 
   faultaddress &= PAGE_FRAME;
 
@@ -239,11 +239,13 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   }
 
   // Assert that the address space has been set up properly.
-  KASSERT(as->stackpbase != 0);
-  KASSERT((as->stackpbase & PAGE_FRAME) == as->stackpbase);
-  stackbase = USERSTACK - DUMBVM_STACKPAGES * PAGE_SIZE;
+  //KASSERT(as->stackpbase != 0);
+  //KASSERT((as->stackpbase & PAGE_FRAME) == as->stackpbase);
+  /*stackbase = USERSTACK - DUMBVM_STACKPAGES * PAGE_SIZE;
   stacktop = USERSTACK;
   if (faultaddress >= stackbase && faultaddress < stacktop) {
+    as->stackpbase = alloc_upages(DUMBVM_STACKPAGES);
+    // Add them to your pagetable.
     paddr = (faultaddress - stackbase) + as->stackpbase;
   }
   else {
@@ -262,6 +264,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
       vtop = rlnode->vbase + rlnode->npages * PAGE_SIZE;
 
       if (faultaddress >= vbase && faultaddress < vtop) {
+        rlnode->pbase = alloc_upages(1);
         paddr = (faultaddress - vbase) + rlnode->pbase;
         flag = 1;
         break;
@@ -272,9 +275,9 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
     if (flag == 0) {
       flag = 0;
-      return EFAULT;
+      //return EFAULT;
     }
-  }
+  }*/
 
   // Assert that the address space has been set up properly. */
   /////////////////////
@@ -289,7 +292,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   KASSERT((as->as_pbase1 & PAGE_FRAME) == as->as_pbase1);
   KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
   KASSERT((as->as_pbase2 & PAGE_FRAME) == as->as_pbase2);
-  KASSERT((as->as_stackpbase & PAGE_FRAME) == as->as_stackpbase);
+  KASSERT((as->as_stackpbase & PAGE_FRAME) == as->as_stackpbase);*/
 
   vbase1 = as->as_vbase1;
   vtop1 = vbase1 + as->as_npages1 * PAGE_SIZE;
@@ -299,17 +302,20 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   stacktop = USERSTACK;
 
   if (faultaddress >= vbase1 && faultaddress < vtop1) {
+    //as->as_pbase1 = getppages(1, DIRTY);
     paddr = (faultaddress - vbase1) + as->as_pbase1;
   }
   else if (faultaddress >= vbase2 && faultaddress < vtop2) {
+    //as->as_pbase2 = getppages(1, DIRTY);
     paddr = (faultaddress - vbase2) + as->as_pbase2;
   }
   else if (faultaddress >= stackbase && faultaddress < stacktop) {
+    //as->as_stackpbase = getppages(1, DIRTY);
     paddr = (faultaddress - stackbase) + as->as_stackpbase;
   }
   else {
     return EFAULT;
-  }*/
+  }
   /////////////////////////////////////////
 
   /* make sure it's page-aligned */

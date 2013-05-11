@@ -24,8 +24,7 @@ struct addrspace * as_create(void) {
 
   as->regionlisthead = NULL;
 
-  as->pagetable = kmalloc(sizeof(struct pagetable));
-  as->pagetable->next = NULL;
+  as->pagetable = NULL;
 
   as->stackpbase = 0;
 
@@ -95,7 +94,7 @@ void as_activate(struct addrspace *as) {
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readable, int writeable, int executable) {
 
   size_t npages;
-  struct regionlistnode *rlnode;
+  //struct regionlistnode *rlnode;
 
   // Align the region. First, the base...
   sz += vaddr & ~(vaddr_t)PAGE_FRAME;
@@ -112,7 +111,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readabl
   (void)executable;
 
   // Walk through the region list and add this guy.
-  rlnode = as->regionlisthead;
+  /*rlnode = as->regionlisthead;
   if (rlnode == NULL) {
     as->regionlisthead = kmalloc(sizeof(struct regionlistnode));
     as->regionlisthead->vbase = vaddr;
@@ -133,7 +132,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readabl
     rlnode->next->npages = npages;
     rlnode->next->pbase = 0;
     rlnode->next->next = NULL;
-  }
+  }*/
 
   if (as->as_vbase1 == 0) {
     as->as_vbase1 = vaddr;
@@ -156,7 +155,8 @@ void as_zero_region(paddr_t paddr, unsigned npages) {
 
 int as_prepare_load(struct addrspace *as) {
 
-  struct regionlistnode *rlnode;
+  //struct regionlistnode *rlnode;
+  (void)as;
 
 /////////////////////////////////////////
   /*KASSERT(as->as_pbase1 == 0);
@@ -180,7 +180,7 @@ int as_prepare_load(struct addrspace *as) {
   /////////////////////////////////
 
 
-  rlnode = as->regionlisthead;
+  /*rlnode = as->regionlisthead;
   while (rlnode != NULL) {
 
     KASSERT(rlnode->pbase == 0);
@@ -197,7 +197,7 @@ int as_prepare_load(struct addrspace *as) {
   if (as->stackpbase == 0) {
     return ENOMEM;
   }
-  as_zero_region(as->stackpbase, DUMBVM_STACKPAGES);
+  as_zero_region(as->stackpbase, DUMBVM_STACKPAGES);*/
 
   return 0;
 }
@@ -210,7 +210,8 @@ int as_complete_load(struct addrspace *as) {
 
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
-  KASSERT(as->stackpbase != 0);
+  //KASSERT(as->stackpbase != 0);
+  (void)as;
 
   *stackptr = USERSTACK;
   return 0;
@@ -219,13 +220,13 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 int as_copy(struct addrspace *old, struct addrspace **ret) {
 
   struct addrspace *new;
-  struct regionlistnode *rlnew, *rlold;
+  //struct regionlistnode *rlnew, *rlold;
 
   new = as_create();
   if (new == NULL) {
     return ENOMEM;
   }
-  new->regionlisthead = kmalloc(sizeof(struct regionlistnode));
+  /*new->regionlisthead = kmalloc(sizeof(struct regionlistnode));
   new->regionlisthead->next = NULL;
 
   rlold = old->regionlisthead;
@@ -246,22 +247,22 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
       rlnew->next->next = NULL;
       rlnew = rlnew->next;
     }
-  }
+  }*/
 
 ////////////////////////////////////////
-  /*new->as_vbase1 = old->as_vbase1;
+  new->as_vbase1 = old->as_vbase1;
   new->as_npages1 = old->as_npages1;
   new->as_vbase2 = old->as_vbase2;
-  new->as_npages2 = old->as_npages2;*/
+  new->as_npages2 = old->as_npages2;
   ///////////////////////////////
 
-  /* (Mis)use as_prepare_load to allocate some physical memory. */
+  // (Mis)use as_prepare_load to allocate some physical memory.
   if (as_prepare_load(new)) {
     as_destroy(new);
     return ENOMEM;
   }
 
-  KASSERT(new->stackpbase != 0);
+  /*KASSERT(new->stackpbase != 0);
   memmove((void *)PADDR_TO_KVADDR(new->stackpbase), (const void *)PADDR_TO_KVADDR(old->stackpbase), DUMBVM_STACKPAGES*PAGE_SIZE);
 
   rlnew = new->regionlisthead;
@@ -273,11 +274,11 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 
     rlnew = rlnew->next;
     rlold = rlold->next;
-  }
+  }*/
 
 //////////////////////////////////
 
-  /*KASSERT(new->as_pbase1 != 0);
+  KASSERT(new->as_pbase1 != 0);
   KASSERT(new->as_pbase2 != 0);
   KASSERT(new->as_stackpbase != 0);
 
@@ -291,7 +292,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 
   memmove((void *)PADDR_TO_KVADDR(new->as_stackpbase),
     (const void *)PADDR_TO_KVADDR(old->as_stackpbase),
-    DUMBVM_STACKPAGES*PAGE_SIZE);*/
+    DUMBVM_STACKPAGES*PAGE_SIZE);
 
 ///////////////////////////////////////////////////////////////////
   *ret = new;
