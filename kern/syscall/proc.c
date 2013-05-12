@@ -314,11 +314,13 @@ int sys_execv(const char *program, char **args) {
 
   // Prepare addrspace.
   //KASSERT(curthread->t_addrspace == NULL);
+  struct addrspace *tempaddr = curthread->t_addrspace;
   if((curthread->t_addrspace = as_create()) == NULL) {
     vfs_close(vn);
     errno = ENOMEM;
     return -1;
   }
+  kfree(tempaddr);
 
   as_activate(curthread->t_addrspace);
 

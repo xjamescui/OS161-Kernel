@@ -74,11 +74,14 @@ runprogram(char *progname, char **args)
   KASSERT(curthread->t_addrspace == NULL);
 
   /* Create a new address space. */
+  struct addrspace *tempaddr;
+  tempaddr = curthread->t_addrspace;
   curthread->t_addrspace = as_create();
   if (curthread->t_addrspace==NULL) {
     vfs_close(v);
     return ENOMEM;
   }
+  kfree(tempaddr);
 
   /* Activate it. */
   as_activate(curthread->t_addrspace);
