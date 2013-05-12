@@ -72,13 +72,6 @@ void as_activate(struct addrspace *as) {
   splx(spl);
 }
 
-// Set up a segment at virtual address VADDR of size MEMSIZE. The
-// segment in memory extends from VADDR up to (but not including)
-// VADDR+MEMSIZE.
-// The READABLE, WRITEABLE, and EXECUTABLE flags are set if read,
-// write, or execute permission should be set on the segment. At the
-// moment, these are ignored. When you write the VM system, you may
-// want to implement them.
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz, int readable, int writeable, int executable) {
 
   size_t npages;
@@ -127,53 +120,42 @@ int as_prepare_load(struct addrspace *as) {
 
   struct regionlistnode *rlnode;
 
-  rlnode = as->regionlisthead;
   struct pagetable *pagetableentry;
-  int count;
   vaddr_t vbase;
+  int count;
+
   if (as->pagetable == NULL) {
     as->pagetable = kmalloc(sizeof(struct pagetable));
-    as->pagetable->next = NULL;
+    as->pagetable->vaddr = 0; as->pagetable->paddr = 0; as->pagetable->next = NULL;
   }
+
   pagetableentry = as->pagetable;
-  while (rlnode != NULL) {
-    //KASSERT(rlnode->pbase == 0);
+  rlnode = as->regionlisthead;
+  while (1) {
 
-    count = rlnode->npages;
     vbase = rlnode->vbase;
-    while (count) {
-
+    count = rlnode->npages;
+    while (1) {
       pagetableentry->vaddr = vbase;
       pagetableentry->paddr = alloc_upages(1);
       pagetableentry->next = NULL;
-      if (pagetableentry->paddr == 0) {
-        return ENOMEM;
-      }
-      //as_zero_region(pagetableentry->paddr, 1);
+      as_zero_region(pagetableentry->paddr, 1);
+
       count--;
       if (count == 0)
         break;
+
       pagetableentry->next = kmalloc(sizeof(struct pagetable)); pagetableentry->next->next = NULL;
       pagetableentry = pagetableentry->next;
       vbase += PAGE_SIZE;
     }
-
     rlnode = rlnode->next;
+    if (rlnode == NULL)
+      break;
     pagetableentry->next = kmalloc(sizeof(struct pagetable)); pagetableentry->next->next = NULL;
-    pagetableentry->next->paddr = 0; pagetableentry->next->vaddr = 0; pagetableentry = pagetableentry->next;
+    pagetableentry = pagetableentry->next;
   }
 
-  /*rlnode = as->regionlisthead;
-  while (rlnode != NULL) {
-
-    KASSERT(rlnode->pbase == 0);
-    rlnode->pbase = alloc_upages(rlnode->npages);
-    if (rlnode->pbase == 0) {
-      return ENOMEM;
-    }
-    as_zero_region(rlnode->pbase, rlnode->npages);
-    rlnode = rlnode->next;
-  }*/
 
   KASSERT(as->stackpbase == 0);
   as->stackpbase = alloc_upages(DUMBVM_STACKPAGES);
@@ -238,43 +220,22 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
   KASSERT(new->stackpbase != 0);
   memmove((void *)PADDR_TO_KVADDR(new->stackpbase), (const void *)PADDR_TO_KVADDR(old->stackpbase), DUMBVM_STACKPAGES*PAGE_SIZE);
 
-  /*rlnew = new->regionlisthead;
-  rlold = old->regionlisthead;
-  while (rlold != NULL) {
-
-    memmove((void *)PADDR_TO_KVADDR(rlnew->pbase), (const void *)PADDR_TO_KVADDR(rlold->pbase), rlold->npages*PAGE_SIZE);
-
-    rlold = rlold->next;
-    rlnew = rlnew->next;
-  }*/
-
 
   struct pagetable *newpagetable, *oldpagetable;
 
-  if (new->pagetable == NULL) {
-    new->pagetable = kmalloc(sizeof(struct pagetable));
-    new->pagetable->vaddr = 0;
-    new->pagetable->paddr = 0;
-    new->pagetable->next = NULL;
-  }
+  KASSERT(newpagetable != NULL);
   newpagetable = new->pagetable;
   oldpagetable = old->pagetable;
 
   while (1) {
 
     // This may leak memory.
-    newpagetable->paddr = alloc_upages(1);
     newpagetable->vaddr = oldpagetable->vaddr;
-    newpagetable->next = NULL;
-    if (oldpagetable->paddr != 0) {
-      memmove((void *)PADDR_TO_KVADDR(newpagetable->paddr), (const void *)PADDR_TO_KVADDR(oldpagetable->paddr), 1);
-    }
+    memmove((void *)PADDR_TO_KVADDR(newpagetable->paddr), (const void *)PADDR_TO_KVADDR(oldpagetable->paddr), PAGE_SIZE);
 
     if (oldpagetable->next == NULL)
       break;
 
-    newpagetable->next = kmalloc(sizeof(struct pagetable));
-    newpagetable->next->next = NULL;
     newpagetable = newpagetable->next;
     oldpagetable = oldpagetable->next;
   }
