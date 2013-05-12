@@ -237,7 +237,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   }
   else {
 
-    rlnode = as->regionlisthead;
+    /*rlnode = as->regionlisthead;
     flag = 0;
     while (rlnode != NULL) {
 
@@ -256,6 +256,46 @@ vm_fault(int faulttype, vaddr_t faultaddress)
         break;
       }
 
+      rlnode = rlnode->next;
+    }*/
+
+    struct pagetable *pagetableentry;
+    unsigned int i;
+
+    rlnode = as->regionlisthead;
+    flag = 0;
+    while (rlnode != NULL) {
+
+      KASSERT(rlnode->vbase != 0);
+      KASSERT(rlnode->npages != 0);
+      KASSERT((rlnode->vbase & PAGE_FRAME) == rlnode->vbase);
+
+      for (i = 0; i < rlnode->npages; i++) {
+        if (flag == 1)
+          break;
+        vbase = rlnode->vbase + PAGE_SIZE * i;
+        vtop = vbase + PAGE_SIZE;
+
+        if (faultaddress >= vbase && faultaddress < vtop) {
+          if (as->pagetable != NULL) {
+            pagetableentry = as->pagetable;
+            while (pagetableentry != NULL) {
+              if (pagetableentry->vaddr == vbase) {
+                flag = 1;
+                break;
+              }
+              pagetableentry = pagetableentry->next;
+            }
+          }
+        }
+      }
+
+      if (flag == 1) {
+        paddr = (faultaddress - vbase) + pagetableentry->paddr;
+        break;
+      }
+
+///////////////////////// here
       rlnode = rlnode->next;
     }
 
@@ -288,3 +328,44 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   splx(spl);
   return EFAULT;
 }
+
+      /*
+      vbase = rlnode->vbase;
+      vtop = rlnode->vbase + rlnode->npages * PAGE_SIZE;
+      if (faultaddress >= vbase && faultaddress < vtop) {
+
+        flag = 0;
+        pagetableentry = as->pagetable;
+        if (as->pagetable == NULL) {
+          as->pagetable = kmalloc(sizeof(struct pagetable));
+          as->pagetable->next = NULL;
+          pagetableentry = as->pagetable;
+          pagetableentry->vaddr = vbase;
+          pagetableentry->paddr = alloc_upages(1);
+          as_zero_region(pagetableentry->paddr, 1);
+        }
+        else {
+          while (pagetableentry != NULL) {
+            if (pagetableentry->vaddr == vbase) {
+              flag = 1;
+              break;
+            }
+            if (pagetableentry->next == NULL) {
+              pagetableentry->next = kmalloc(sizeof(struct pagetable));
+              pagetableentry->next->next = NULL;
+              pagetableentry->next->vaddr = vbase;
+              pagetableentry->next->paddr = alloc_upages(1);
+              pagetableentry = pagetableentry->next;
+              as_zero_region(pagetableentry->paddr, 1);
+              break;
+            }
+            pagetableentry = pagetableentry->next;
+          }
+        }
+
+        KASSERT(pagetableentry->paddr != 0);
+
+        paddr = (faultaddress - vbase) + pagetableentry->paddr;
+        flag = 1;
+        break;
+      }*/
