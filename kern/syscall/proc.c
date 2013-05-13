@@ -363,6 +363,7 @@ int sys_execv(const char *program, char **args) {
     if((result = copyout((const void *)kkargs[argc], (userptr_t)userstk, temp))) {
       return result;
     }
+    kfree(kkargs[argc]);
 
     userptrs[argc] = (char *)userstk;
 

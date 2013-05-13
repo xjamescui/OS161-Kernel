@@ -119,6 +119,7 @@ runprogram(char *progname, char **args)
 
     kargs = (char *)kmalloc(sizeof(char) * ARGSIZE);
     kargs = kstrdup(ptr);
+    kfree(ptr);
 
     temp = strlen(kargs) + 1;
     temp += (4 - (temp % 4));
@@ -132,6 +133,8 @@ runprogram(char *progname, char **args)
     if((result = copyout((const void *)kargs , (userptr_t)userstk, temp))) {
       return result;
     }
+
+    kfree(kargs);
 
     userptrs[argc] = (char *)userstk;
 

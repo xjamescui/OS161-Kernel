@@ -142,14 +142,14 @@ free_kpages(vaddr_t addr) {
 
   for (i = 0; i < num_pages; i++) {
     if (coremap[i].vaddr == addr) {
-      //for (j = 0; j < coremap[i].pagecount; j++) {
+      for (j = 0; j < coremap[i].pagecount; j++) {
         j = 0;
         bzero((void *)coremap[i + j].vaddr, PAGE_SIZE);
         coremap[i + j].state = FREE;
         coremap[i + j].addrspace = NULL;
         // update timestamp here.
         coremap[i + j].pagecount = 0;
-      //}
+      }
       break;
     }
   }
