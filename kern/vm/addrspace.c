@@ -33,6 +33,9 @@ struct addrspace * as_create(void) {
 
 void as_destroy(struct addrspace *as) {
 
+  if (as == NULL)
+    return;
+
   struct pagetable *ptnode, *pttemp;
   struct regionlistnode *rlnode, *rltemp;
 
@@ -51,6 +54,8 @@ void as_destroy(struct addrspace *as) {
     rlnode = rlnode->next;
     kfree(rltemp);
   }
+
+  free_kpages(as->stackpbase);
 
   kfree(as);
 }
@@ -162,6 +167,7 @@ int as_prepare_load(struct addrspace *as) {
   if (as->stackpbase == 0) {
     return ENOMEM;
   }
+  KASSERT(as->stackpbase != 0);
   as_zero_region(as->stackpbase, DUMBVM_STACKPAGES);
 
   return 0;
@@ -176,7 +182,6 @@ int as_complete_load(struct addrspace *as) {
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
   KASSERT(as->stackpbase != 0);
-  (void)as;
 
   *stackptr = USERSTACK;
   return 0;

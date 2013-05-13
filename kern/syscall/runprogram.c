@@ -81,10 +81,11 @@ runprogram(char *progname, char **args)
     vfs_close(v);
     return ENOMEM;
   }
-  kfree(tempaddr);
-
   /* Activate it. */
   as_activate(curthread->t_addrspace);
+  as_destroy(tempaddr);
+  //kfree(tempaddr);
+
 
   /* Load the executable. */
   result = load_elf(v, &entrypoint);

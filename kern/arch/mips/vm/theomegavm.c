@@ -134,6 +134,7 @@ vaddr_t alloc_kpages(int npages)
 
 void
 free_kpages(vaddr_t addr) {
+
   unsigned long long i, j;
 
   spinlock_acquire(&stealmem_lock);
@@ -152,8 +153,6 @@ free_kpages(vaddr_t addr) {
       break;
     }
   }
-
-  (void)addr;
 
   spinlock_release(&stealmem_lock);
   //lock_release(coremaplock);
