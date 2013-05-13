@@ -286,19 +286,25 @@ vm_fault(int faulttype, vaddr_t faultaddress)
   KASSERT((paddr & PAGE_FRAME) == paddr);
 
   /* Disable interrupts on this CPU while frobbing the TLB. */
-  spl = splhigh();
+  // Thank you Ajay for the cool trick.
+  for (;;) {
 
-  for (i=0; i<NUM_TLB; i++) {
-    tlb_read(&ehi, &elo, i);
-    if (elo & TLBLO_VALID) {
-      continue;
+    spl = splhigh();
+
+    for (i=0; i<NUM_TLB; i++) {
+      tlb_read(&ehi, &elo, i);
+      if (elo & TLBLO_VALID) {
+        continue;
+      }
+      ehi = faultaddress;
+      elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+      DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+      tlb_write(ehi, elo, i);
+      splx(spl);
+      return 0;
     }
-    ehi = faultaddress;
-    elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-    DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
-    tlb_write(ehi, elo, i);
+    as_activate(as);
     splx(spl);
-    return 0;
   }
 
   kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
