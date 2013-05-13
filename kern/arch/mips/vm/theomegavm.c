@@ -136,9 +136,11 @@ void
 free_kpages(vaddr_t addr) {
 
   unsigned long long i, j;
+  //int spl;
 
-  spinlock_acquire(&stealmem_lock);
+  //spinlock_acquire(&stealmem_lock);
   //lock_acquire(coremaplock);
+  //spl = splhigh();
 
   for (i = 0; i < num_pages; i++) {
     if (coremap[i].vaddr == addr) {
@@ -154,7 +156,8 @@ free_kpages(vaddr_t addr) {
     }
   }
 
-  spinlock_release(&stealmem_lock);
+  //splx(spl);
+  //spinlock_release(&stealmem_lock);
   //lock_release(coremaplock);
 }
 
